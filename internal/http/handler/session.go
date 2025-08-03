@@ -23,6 +23,7 @@ type SessionHandler struct {
 	listUC       *sessionUC.ListUseCase
 	deleteUC     *sessionUC.DeleteUseCase
 	resolveUC    *sessionUC.ResolveUseCase
+	setProxyUC   *sessionUC.SetProxyUseCase
 
 	// WhatsApp use cases
 	generateQRUC *whatsappUC.GenerateQRUseCase
@@ -40,6 +41,7 @@ func NewSessionHandler(
 	listUC *sessionUC.ListUseCase,
 	deleteUC *sessionUC.DeleteUseCase,
 	resolveUC *sessionUC.ResolveUseCase,
+	setProxyUC *sessionUC.SetProxyUseCase,
 	generateQRUC *whatsappUC.GenerateQRUseCase,
 	pairPhoneUC *whatsappUC.PairPhoneUseCase,
 	logger logger.Logger,
@@ -52,6 +54,7 @@ func NewSessionHandler(
 		listUC:       listUC,
 		deleteUC:     deleteUC,
 		resolveUC:    resolveUC,
+		setProxyUC:   setProxyUC,
 		generateQRUC: generateQRUC,
 		pairPhoneUC:  pairPhoneUC,
 		logger:       logger,
@@ -79,6 +82,18 @@ func (h *SessionHandler) CreateSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Validate proxy parameters if provided
+	if req.ProxyHost != "" {
+		if req.ProxyPort <= 0 || req.ProxyPort > 65535 {
+			h.writeErrorResponse(w, http.StatusBadRequest, "Invalid proxy port", nil)
+			return
+		}
+		if req.ProxyType != "http" && req.ProxyType != "socks5" {
+			h.writeErrorResponse(w, http.StatusBadRequest, "Invalid proxy type. Must be 'http' or 'socks5'", nil)
+			return
+		}
+	}
+
 	// Execute use case
 	ucReq := sessionUC.CreateRequest{Name: req.Name}
 	result, err := h.createUC.Execute(r.Context(), ucReq)
@@ -87,7 +102,35 @@ func (h *SessionHandler) CreateSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Convert to HTTP response
+	// Configure proxy if provided
+	if req.ProxyHost != "" {
+		setProxyReq := sessionUC.SetProxyRequest{
+			SessionID: result.Session.ID(),
+			ProxyHost: req.ProxyHost,
+			ProxyPort: req.ProxyPort,
+			ProxyType: req.ProxyType,
+			Username:  req.Username,
+			Password:  req.Password,
+		}
+
+		_, err := h.setProxyUC.Execute(r.Context(), setProxyReq)
+		if err != nil {
+			h.logger.ErrorWithError("failed to configure proxy during session creation", err, logger.Fields{
+				"session_id": result.Session.ID().String(),
+				"proxy_host": req.ProxyHost,
+			})
+			// Don't fail the session creation, just log the error
+		} else {
+			// Fetch updated session to include proxy configuration in response
+			resolveReq := sessionUC.ResolveRequest{Identifier: session.SessionIdentifierFromID(result.Session.ID())}
+			resolveResult, err := h.resolveUC.Execute(r.Context(), resolveReq)
+			if err == nil {
+				result.Session = resolveResult.Session
+			}
+		}
+	}
+
+	// Convert to HTTP response (this will include proxy_config if configured)
 	response := dto.ToSessionResponse(result.Session)
 	h.writeSuccessResponse(w, http.StatusCreated, "Session created successfully", response)
 }
@@ -519,13 +562,54 @@ func (h *SessionHandler) SetProxy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: Implementar configuração de proxy
-	response := &dto.ProxySetResponse{
-		SessionID: sess.ID().String(),
-		ProxyURL:  req.ProxyURL,
-		Success:   false,
-		Message:   "Proxy configuration not implemented yet",
+	// Se ProxyHost está vazio, remove o proxy
+	if req.ProxyHost == "" {
+		sess.ClearProxyURL()
+
+		// Usar o use case para atualizar (passando host vazio)
+		setProxyReq := sessionUC.SetProxyRequest{
+			SessionID: sess.ID(),
+			ProxyHost: "",
+		}
+
+		_, err := h.setProxyUC.Execute(r.Context(), setProxyReq)
+		if err != nil {
+			h.handleUseCaseError(w, err)
+			return
+		}
+
+		response := &dto.ProxySetResponse{
+			SessionID: sess.ID().String(),
+			ProxyURL:  "",
+			Success:   true,
+			Message:   "Proxy removed successfully",
+		}
+		h.writeSuccessResponse(w, http.StatusOK, "Proxy removed", response)
+		return
 	}
 
-	h.writeSuccessResponse(w, http.StatusOK, "Proxy configuration processed", response)
+	// Se ProxyHost tem valor, configura o proxy usando o use case
+	setProxyReq := sessionUC.SetProxyRequest{
+		SessionID: sess.ID(),
+		ProxyHost: req.ProxyHost,
+		ProxyPort: req.ProxyPort,
+		ProxyType: req.ProxyType,
+		Username:  req.Username,
+		Password:  req.Password,
+	}
+
+	result, err := h.setProxyUC.Execute(r.Context(), setProxyReq)
+	if err != nil {
+		h.handleUseCaseError(w, err)
+		return
+	}
+
+	response := &dto.ProxySetResponse{
+		SessionID: result.Session.ID().String(),
+		ProxyURL:  result.Session.ProxyURL(),
+		Success:   true,
+		Message:   result.Message,
+	}
+
+	h.writeSuccessResponse(w, http.StatusOK, "Proxy configured", response)
 }

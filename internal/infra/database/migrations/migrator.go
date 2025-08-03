@@ -3,6 +3,7 @@ package migrations
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/uptrace/bun"
 
@@ -47,6 +48,11 @@ func (m *Migrator) Migrate(ctx context.Context) error {
 	// Create triggers for updated_at
 	if err := m.createTriggers(ctx); err != nil {
 		return fmt.Errorf("failed to create triggers: %w", err)
+	}
+
+	// Run schema migrations
+	if err := m.runSchemaMigrations(ctx); err != nil {
+		return fmt.Errorf("failed to run schema migrations: %w", err)
 	}
 
 	m.logger.Info("database migrations completed successfully")
@@ -153,6 +159,55 @@ func (m *Migrator) createTriggers(ctx context.Context) error {
 
 	m.logger.InfoWithFields("database triggers created", logger.Fields{
 		"count":    len(triggers),
+		"database": dialectName,
+	})
+
+	return nil
+}
+
+// runSchemaMigrations runs schema migrations for adding new columns
+func (m *Migrator) runSchemaMigrations(ctx context.Context) error {
+	m.logger.Info("running schema migrations")
+
+	// Detect database type by checking dialect
+	dialectName := fmt.Sprintf("%T", m.db.Dialect())
+
+	var migrations []string
+
+	if dialectName == "*sqlitedialect.Dialect" {
+		migrations = []string{
+			// Add proxy_config column to wazmeow_sessions table
+			`ALTER TABLE wazmeow_sessions ADD COLUMN proxy_config TEXT DEFAULT NULL`,
+		}
+	} else if dialectName == "*pgdialect.Dialect" {
+		migrations = []string{
+			// Add proxy_config column to wazmeow_sessions table
+			`ALTER TABLE wazmeow_sessions ADD COLUMN IF NOT EXISTS proxy_config JSONB DEFAULT NULL`,
+		}
+	} else {
+		m.logger.WarnWithFields("unknown database type, skipping schema migrations", logger.Fields{
+			"database": dialectName,
+		})
+		return nil
+	}
+
+	for _, migrationSQL := range migrations {
+		if _, err := m.db.ExecContext(ctx, migrationSQL); err != nil {
+			// Check if error is about column already existing
+			if strings.Contains(err.Error(), "duplicate column name") ||
+				strings.Contains(err.Error(), "already exists") ||
+				strings.Contains(err.Error(), "column already exists") {
+				m.logger.InfoWithFields("column already exists, skipping migration", logger.Fields{
+					"migration": migrationSQL,
+				})
+				continue
+			}
+			return fmt.Errorf("failed to run schema migration: %s: %w", migrationSQL, err)
+		}
+	}
+
+	m.logger.InfoWithFields("schema migrations completed", logger.Fields{
+		"count":    len(migrations),
 		"database": dialectName,
 	})
 

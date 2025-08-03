@@ -32,6 +32,11 @@ var (
 	ErrInvalidWhatsAppJID = errors.New("invalid WhatsApp JID")
 	ErrEmptyWhatsAppJID   = errors.New("WhatsApp JID cannot be empty")
 
+	// Proxy URL errors
+	ErrInvalidProxyURL        = errors.New("invalid proxy URL")
+	ErrUnsupportedProxyScheme = errors.New("unsupported proxy scheme")
+	ErrInvalidProxyHost       = errors.New("invalid proxy host")
+
 	// Status errors
 	ErrInvalidStatus = errors.New("invalid session status")
 

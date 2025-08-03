@@ -19,6 +19,7 @@ type Config struct {
 	Security SecurityConfig `json:"security"`
 	Features FeaturesConfig `json:"features"`
 	Auth     AuthConfig     `json:"auth"`
+	Proxy    ProxyConfig    `json:"proxy"`
 }
 
 // ServerConfig represents server configuration
@@ -138,6 +139,20 @@ type FeaturesConfig struct {
 	EnableWebhooks bool `json:"enable_webhooks"`
 }
 
+// ProxyConfig represents global proxy configuration
+type ProxyConfig struct {
+	Enabled         bool          `json:"enabled"`
+	DefaultType     string        `json:"default_type"` // "http", "https", "socks4", "socks5"
+	DefaultHost     string        `json:"default_host"`
+	DefaultPort     int           `json:"default_port"`
+	DefaultUsername string        `json:"default_username"`
+	DefaultPassword string        `json:"default_password"`
+	Timeout         time.Duration `json:"timeout"`
+	MaxRetries      int           `json:"max_retries"`
+	TestURL         string        `json:"test_url"`          // URL used to test proxy connectivity
+	AllowPerSession bool          `json:"allow_per_session"` // Allow per-session proxy override
+}
+
 // Load loads configuration from environment variables
 func Load() (*Config, error) {
 	// Try to load .env file (ignore error if file doesn't exist)
@@ -227,6 +242,18 @@ func Load() (*Config, error) {
 				Password: getEnvString("AUTH_BASIC_PASSWORD", ""),
 			},
 		},
+		Proxy: ProxyConfig{
+			Enabled:         getEnvBool("PROXY_ENABLED", false),
+			DefaultType:     getEnvString("PROXY_DEFAULT_TYPE", "http"),
+			DefaultHost:     getEnvString("PROXY_DEFAULT_HOST", ""),
+			DefaultPort:     getEnvInt("PROXY_DEFAULT_PORT", 8080),
+			DefaultUsername: getEnvString("PROXY_DEFAULT_USERNAME", ""),
+			DefaultPassword: getEnvString("PROXY_DEFAULT_PASSWORD", ""),
+			Timeout:         getEnvDuration("PROXY_TIMEOUT", 30*time.Second),
+			MaxRetries:      getEnvInt("PROXY_MAX_RETRIES", 3),
+			TestURL:         getEnvString("PROXY_TEST_URL", "https://httpbin.org/ip"),
+			AllowPerSession: getEnvBool("PROXY_ALLOW_PER_SESSION", true),
+		},
 	}
 
 	if err := config.Validate(); err != nil {
@@ -273,6 +300,48 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("invalid file log format: %s", c.Log.FileFormat)
 	}
 
+	// Validate proxy configuration
+	if err := c.validateProxy(); err != nil {
+		return fmt.Errorf("invalid proxy configuration: %w", err)
+	}
+
+	return nil
+}
+
+// validateProxy validates the proxy configuration
+func (c *Config) validateProxy() error {
+	if !c.Proxy.Enabled {
+		return nil // Skip validation if proxy is disabled
+	}
+
+	// Validate proxy type
+	validProxyTypes := []string{"http", "https", "socks4", "socks5"}
+	if !contains(validProxyTypes, c.Proxy.DefaultType) {
+		return fmt.Errorf("invalid proxy type: %s", c.Proxy.DefaultType)
+	}
+
+	// Validate proxy host if provided
+	if c.Proxy.DefaultHost != "" {
+		if len(c.Proxy.DefaultHost) < 3 || len(c.Proxy.DefaultHost) > 253 {
+			return fmt.Errorf("invalid proxy host length: %s", c.Proxy.DefaultHost)
+		}
+	}
+
+	// Validate proxy port
+	if c.Proxy.DefaultPort <= 0 || c.Proxy.DefaultPort > 65535 {
+		return fmt.Errorf("invalid proxy port: %d", c.Proxy.DefaultPort)
+	}
+
+	// Validate timeout
+	if c.Proxy.Timeout <= 0 {
+		return fmt.Errorf("invalid proxy timeout: %v", c.Proxy.Timeout)
+	}
+
+	// Validate max retries
+	if c.Proxy.MaxRetries < 0 || c.Proxy.MaxRetries > 10 {
+		return fmt.Errorf("invalid proxy max retries: %d", c.Proxy.MaxRetries)
+	}
+
 	return nil
 }
 
@@ -289,6 +358,61 @@ func (c *Config) IsDevelopment() bool {
 // IsProduction returns true if running in production mode
 func (c *Config) IsProduction() bool {
 	return getEnvString("ENVIRONMENT", "development") == "production"
+}
+
+// HasDefaultProxy returns true if a default proxy is configured
+func (c *Config) HasDefaultProxy() bool {
+	return c.Proxy.Enabled && c.Proxy.DefaultHost != ""
+}
+
+// GetDefaultProxyURL returns the default proxy URL if configured
+func (c *Config) GetDefaultProxyURL() string {
+	if !c.HasDefaultProxy() {
+		return ""
+	}
+
+	var auth string
+	if c.Proxy.DefaultUsername != "" && c.Proxy.DefaultPassword != "" {
+		auth = fmt.Sprintf("%s:%s@", c.Proxy.DefaultUsername, c.Proxy.DefaultPassword)
+	}
+
+	return fmt.Sprintf("%s://%s%s:%d",
+		c.Proxy.DefaultType, auth, c.Proxy.DefaultHost, c.Proxy.DefaultPort)
+}
+
+// IsProxyPerSessionAllowed returns true if per-session proxy configuration is allowed
+func (c *Config) IsProxyPerSessionAllowed() bool {
+	return c.Proxy.AllowPerSession
+}
+
+// ProxyConfigDTO represents a proxy configuration for API responses
+type ProxyConfigDTO struct {
+	ID        string `json:"id"`
+	SessionID string `json:"session_id"`
+	Type      string `json:"type"`
+	Host      string `json:"host"`
+	Port      int    `json:"port"`
+	HasAuth   bool   `json:"has_auth"`
+	Enabled   bool   `json:"enabled"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
+}
+
+// ConfigureRequest represents the request to configure proxy for a session
+type ConfigureRequest struct {
+	SessionID string `json:"session_id" validate:"required,session_id"`
+	Type      string `json:"type" validate:"required,oneof=http https socks4 socks5"`
+	Host      string `json:"host" validate:"required,hostname_rfc1123|ip"`
+	Port      int    `json:"port" validate:"required,min=1,max=65535"`
+	Username  string `json:"username,omitempty"`
+	Password  string `json:"password,omitempty"`
+	Enabled   *bool  `json:"enabled,omitempty"` // Pointer to distinguish between false and not provided
+}
+
+// ConfigureResponse represents the response after configuring proxy
+type ConfigureResponse struct {
+	ProxyConfig *ProxyConfigDTO `json:"proxy_config"`
+	Message     string          `json:"message"`
 }
 
 // Helper functions for environment variable parsing

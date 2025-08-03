@@ -268,23 +268,26 @@ func (m *Manager) createClientWithContext(ctx context.Context, sessionID session
 		return client, nil
 	}
 
-	// Get saved JID from database for proper device management
+	// Get saved JID and proxy URL from database for proper device management
 	savedJID := ""
+	proxyURL := ""
 	if sess, err := m.sessionRepo.GetByID(ctx, sessionID); err == nil {
 		savedJID = sess.WaJID()
-		m.logger.InfoWithFields("Retrieved saved JID for session", logger.Fields{
+		proxyURL = sess.ProxyURL()
+		m.logger.InfoWithFields("Retrieved session data for client creation", logger.Fields{
 			"session_id": sessionID.String(),
 			"jid":        savedJID,
+			"has_proxy":  proxyURL != "",
 		})
 	} else {
-		m.logger.InfoWithFields("No saved JID found for session", logger.Fields{
+		m.logger.InfoWithFields("No session data found", logger.Fields{
 			"session_id": sessionID.String(),
 			"error":      err.Error(),
 		})
 	}
 
-	// Create new client using whatsmeow with proper device management
-	client, err := NewClient(sessionID, m.container, savedJID, m.logger)
+	// Create new client using whatsmeow with proper device management and proxy
+	client, err := NewClient(sessionID, m.container, savedJID, proxyURL, m.logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create whatsmeow client: %w", err)
 	}

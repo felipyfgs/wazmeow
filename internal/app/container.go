@@ -30,6 +30,7 @@ type AppContainer struct {
 	SessionListUC          *sessionUC.ListUseCase
 	SessionDeleteUC        *sessionUC.DeleteUseCase
 	SessionResolveUC       *sessionUC.ResolveUseCase
+	SessionSetProxyUC      *sessionUC.SetProxyUseCase
 	SessionAutoReconnectUC *sessionUC.AutoReconnectUseCase
 
 	WhatsAppGenerateQRUC  *whatsappUC.GenerateQRUseCase
@@ -134,6 +135,12 @@ func (c *AppContainer) initializeUseCases() error {
 		logger,
 	)
 
+	c.SessionSetProxyUC = sessionUC.NewSetProxyUseCase(
+		c.InfraContainer.SessionRepo,
+		logger,
+		validator,
+	)
+
 	c.SessionAutoReconnectUC = sessionUC.NewAutoReconnectUseCase(
 		c.InfraContainer.SessionRepo,
 		c.InfraContainer.WhatsAppManager,
@@ -178,6 +185,7 @@ func (c *AppContainer) initializeHTTPLayer() error {
 		c.SessionListUC,
 		c.SessionDeleteUC,
 		c.SessionResolveUC,
+		c.SessionSetProxyUC,
 		c.WhatsAppGenerateQRUC,
 		c.WhatsAppPairPhoneUC,
 		logger,

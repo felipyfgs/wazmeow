@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -133,7 +135,7 @@ func parseJID(jidStr string) (types.JID, bool) {
 }
 
 // NewClient creates a new WhatsApp client using whatsmeow with proper multi-session support
-func NewClient(sessionID session.SessionID, container *sqlstore.Container, savedJID string, log logger.Logger) (whatsapp.Client, error) {
+func NewClient(sessionID session.SessionID, container *sqlstore.Container, savedJID string, proxyURL string, log logger.Logger) (whatsapp.Client, error) {
 	log.InfoWithFields("🏗️ CRIANDO novo cliente WhatsApp", logger.Fields{
 		"session_id":    sessionID.String(),
 		"saved_jid":     savedJID,
@@ -167,6 +169,32 @@ func NewClient(sessionID session.SessionID, container *sqlstore.Container, saved
 
 	// Create whatsmeow client
 	client := whatsmeow.NewClient(device, nil)
+
+	// Configure proxy if provided
+	if proxyURL != "" {
+		log.InfoWithFields("🌐 Configurando proxy para WhatsApp WebSocket", logger.Fields{
+			"session_id": sessionID.String(),
+			"proxy_url":  proxyURL,
+		})
+
+		parsedURL, err := url.Parse(proxyURL)
+		if err != nil {
+			log.ErrorWithFields("❌ Erro ao fazer parse da URL do proxy", logger.Fields{
+				"session_id": sessionID.String(),
+				"proxy_url":  proxyURL,
+				"error":      err.Error(),
+			})
+			return nil, fmt.Errorf("invalid proxy URL: %w", err)
+		}
+
+		// Configure proxy for WhatsApp WebSocket connections
+		client.SetProxy(http.ProxyURL(parsedURL))
+
+		log.InfoWithFields("✅ Proxy configurado com sucesso no cliente WhatsApp", logger.Fields{
+			"session_id": sessionID.String(),
+			"proxy_url":  proxyURL,
+		})
+	}
 
 	whatsmeowClient := &Client{
 		sessionID:        sessionID,

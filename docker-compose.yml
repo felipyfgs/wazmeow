@@ -40,6 +40,28 @@ services:
       timeout: 5s
       retries: 5
 
+  # DBGate - Database Administration Tool
+  dbgate:
+    image: dbgate/dbgate:latest
+    container_name: wazmeow-dbgate
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      CONNECTIONS: con1
+      LABEL_con1: WazMeow PostgreSQL
+      SERVER_con1: postgres
+      USER_con1: wazmeow
+      PASSWORD_con1: wazmeow123
+      PORT_con1: 5432
+      ENGINE_con1: postgres@dbgate-plugin-postgres
+      DATABASE_con1: wazmeow
+    networks:
+      - wazmeow-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 
 
 volumes:

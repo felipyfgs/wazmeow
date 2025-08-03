@@ -1,6 +1,8 @@
 package session
 
 import (
+	"net/url"
+	"strings"
 	"time"
 )
 
@@ -11,6 +13,7 @@ type Session struct {
 	status    Status
 	waJID     string
 	qrCode    string
+	proxyURL  string
 	isActive  bool
 	createdAt time.Time
 	updatedAt time.Time
@@ -28,6 +31,7 @@ func NewSession(name string) *Session {
 		status:    StatusDisconnected,
 		waJID:     "",
 		qrCode:    "",
+		proxyURL:  "",
 		isActive:  false,
 		createdAt: time.Now(),
 		updatedAt: time.Now(),
@@ -35,13 +39,14 @@ func NewSession(name string) *Session {
 }
 
 // RestoreSession restores a session from persistence
-func RestoreSession(id SessionID, name string, status Status, waJID string, qrCode string, isActive bool, createdAt, updatedAt time.Time) *Session {
+func RestoreSession(id SessionID, name string, status Status, waJID string, qrCode string, proxyURL string, isActive bool, createdAt, updatedAt time.Time) *Session {
 	return &Session{
 		id:        id,
 		name:      name,
 		status:    status,
 		waJID:     waJID,
 		qrCode:    qrCode,
+		proxyURL:  proxyURL,
 		isActive:  isActive,
 		createdAt: createdAt,
 		updatedAt: updatedAt,
@@ -102,6 +107,135 @@ func (s *Session) UpdateName(name string) error {
 	return nil
 }
 
+// SetProxyURL updates the session proxy URL with validation
+func (s *Session) SetProxyURL(proxyURL string) error {
+	if proxyURL != "" {
+		if err := s.validateProxyURL(proxyURL); err != nil {
+			return err
+		}
+	}
+
+	s.proxyURL = proxyURL
+	s.updatedAt = time.Now()
+	return nil
+}
+
+// ClearProxyURL clears the session proxy URL
+func (s *Session) ClearProxyURL() {
+	s.proxyURL = ""
+	s.updatedAt = time.Now()
+}
+
+// HasProxy returns true if the session has a proxy configured
+func (s *Session) HasProxy() bool {
+	return s.proxyURL != ""
+}
+
+// GetProxyType returns the proxy type from the proxy URL
+func (s *Session) GetProxyType() string {
+	if !s.HasProxy() {
+		return ""
+	}
+
+	if strings.HasPrefix(s.proxyURL, "http://") {
+		return "http"
+	} else if strings.HasPrefix(s.proxyURL, "https://") {
+		return "https"
+	} else if strings.HasPrefix(s.proxyURL, "socks4://") {
+		return "socks4"
+	} else if strings.HasPrefix(s.proxyURL, "socks5://") {
+		return "socks5"
+	}
+
+	return "unknown"
+}
+
+// GetProxyHost returns the proxy host from the proxy URL
+func (s *Session) GetProxyHost() string {
+	if !s.HasProxy() {
+		return ""
+	}
+
+	parsedURL, err := url.Parse(s.proxyURL)
+	if err != nil {
+		return ""
+	}
+
+	return parsedURL.Hostname()
+}
+
+// GetProxyPort returns the proxy port from the proxy URL
+func (s *Session) GetProxyPort() string {
+	if !s.HasProxy() {
+		return ""
+	}
+
+	parsedURL, err := url.Parse(s.proxyURL)
+	if err != nil {
+		return ""
+	}
+
+	port := parsedURL.Port()
+	if port == "" {
+		// Return default ports based on scheme
+		switch parsedURL.Scheme {
+		case "http", "https":
+			return "8080"
+		case "socks4", "socks5":
+			return "1080"
+		}
+	}
+
+	return port
+}
+
+// HasProxyAuth returns true if the proxy URL contains authentication
+func (s *Session) HasProxyAuth() bool {
+	if !s.HasProxy() {
+		return false
+	}
+
+	parsedURL, err := url.Parse(s.proxyURL)
+	if err != nil {
+		return false
+	}
+
+	return parsedURL.User != nil
+}
+
+// validateProxyURL validates the proxy URL format
+func (s *Session) validateProxyURL(proxyURL string) error {
+	if proxyURL == "" {
+		return nil // Empty is valid (no proxy)
+	}
+
+	parsedURL, err := url.Parse(proxyURL)
+	if err != nil {
+		return ErrInvalidProxyURL
+	}
+
+	// Check if scheme is supported
+	supportedSchemes := []string{"http", "https", "socks4", "socks5"}
+	schemeSupported := false
+	for _, scheme := range supportedSchemes {
+		if parsedURL.Scheme == scheme {
+			schemeSupported = true
+			break
+		}
+	}
+
+	if !schemeSupported {
+		return ErrUnsupportedProxyScheme
+	}
+
+	// Check if host is present
+	if parsedURL.Hostname() == "" {
+		return ErrInvalidProxyHost
+	}
+
+	return nil
+}
+
 // CanConnect returns true if the session can be connected
 func (s *Session) CanConnect() bool {
 	// Allow connection for disconnected and connecting states
@@ -150,6 +284,10 @@ func (s *Session) CreatedAt() time.Time {
 
 func (s *Session) UpdatedAt() time.Time {
 	return s.updatedAt
+}
+
+func (s *Session) ProxyURL() string {
+	return s.proxyURL
 }
 
 // Validate validates the session entity
