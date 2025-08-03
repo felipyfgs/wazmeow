@@ -1,0 +1,740 @@
+basePath: /
+consumes:
+- application/json
+definitions:
+  dto.ConnectSessionResponse:
+    description: Resposta da operação de conexão de sessão
+    properties:
+      message:
+        example: QR Code gerado. Escaneie com seu WhatsApp.
+        type: string
+      needs_auth:
+        example: true
+        type: boolean
+      qr_code:
+        example: data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...
+        type: string
+      session:
+        $ref: '#/definitions/dto.SessionResponse'
+    type: object
+  dto.CreateSessionRequest:
+    description: Dados para criação de uma nova sessão WhatsApp
+    properties:
+      name:
+        example: minha-sessao
+        type: string
+    required:
+    - name
+    type: object
+  dto.DeleteSessionResponse:
+    properties:
+      message:
+        type: string
+      session_id:
+        type: string
+    type: object
+  dto.DisconnectSessionResponse:
+    properties:
+      message:
+        type: string
+      session:
+        $ref: '#/definitions/dto.SessionResponse'
+    type: object
+  dto.ErrorResponse:
+    description: Resposta de erro padrão da API
+    properties:
+      code:
+        example: INTERNAL_ERROR
+        type: string
+      context: {}
+      details:
+        example: Detalhes técnicos do erro
+        type: string
+      error:
+        example: Erro interno do servidor
+        type: string
+      success:
+        example: false
+        type: boolean
+    type: object
+  dto.HealthResponse:
+    description: Resposta do health check da aplicação
+    properties:
+      services:
+        additionalProperties: true
+        type: object
+      status:
+        example: healthy
+        type: string
+      timestamp:
+        example: "2024-01-01T12:00:00Z"
+        type: string
+      uptime:
+        example: 2h30m45s
+        type: string
+      version:
+        example: 1.0.0
+        type: string
+    type: object
+  dto.MetricsResponse:
+    description: Métricas completas da aplicação
+    properties:
+      sessions:
+        $ref: '#/definitions/dto.SessionMetrics'
+      system:
+        $ref: '#/definitions/dto.SystemMetrics'
+      timestamp:
+        example: "2024-01-01T12:00:00Z"
+        type: string
+      whatsapp:
+        $ref: '#/definitions/dto.WhatsAppMetrics'
+    type: object
+  dto.PairPhoneRequest:
+    description: Dados para emparelhamento com número de telefone
+    properties:
+      phone_number:
+        example: "5511999999999"
+        type: string
+    required:
+    - phone_number
+    type: object
+  dto.PairPhoneResponse:
+    description: Resposta do emparelhamento com telefone
+    properties:
+      message:
+        example: Telefone emparelhado com sucesso
+        type: string
+      phone_number:
+        example: "5511999999999"
+        type: string
+      session_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      success:
+        example: true
+        type: boolean
+    type: object
+  dto.ProxySetRequest:
+    description: Configuração de proxy para a sessão
+    properties:
+      password:
+        example: pass
+        type: string
+      proxy_url:
+        example: http://proxy.example.com:8080
+        type: string
+      username:
+        example: user
+        type: string
+    required:
+    - proxy_url
+    type: object
+  dto.ProxySetResponse:
+    description: Resposta da configuração de proxy
+    properties:
+      message:
+        example: Proxy configurado com sucesso
+        type: string
+      proxy_url:
+        example: http://proxy.example.com:8080
+        type: string
+      session_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      success:
+        example: true
+        type: boolean
+    type: object
+  dto.QRCodeResponse:
+    description: Resposta com QR Code para autenticação
+    properties:
+      message:
+        example: QR Code gerado com sucesso
+        type: string
+      qr_code:
+        example: data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...
+        type: string
+      session_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+    type: object
+  dto.SessionListResponse:
+    description: Lista de sessões WhatsApp
+    properties:
+      sessions:
+        items:
+          $ref: '#/definitions/dto.SessionResponse'
+        type: array
+      total:
+        example: 5
+        type: integer
+    type: object
+  dto.SessionMetrics:
+    description: Métricas relacionadas às sessões WhatsApp
+    properties:
+      active:
+        example: 4
+        type: integer
+      connected:
+        example: 5
+        type: integer
+      disconnected:
+        example: 3
+        type: integer
+      error:
+        example: 1
+        type: integer
+      total:
+        example: 10
+        type: integer
+    type: object
+  dto.SessionResponse:
+    description: Dados de uma sessão WhatsApp
+    properties:
+      created_at:
+        example: "2024-01-01T12:00:00Z"
+        type: string
+      id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      is_active:
+        example: true
+        type: boolean
+      name:
+        example: minha-sessao
+        type: string
+      status:
+        enum:
+        - disconnected
+        - connecting
+        - connected
+        example: connected
+        type: string
+      updated_at:
+        example: "2024-01-01T12:30:00Z"
+        type: string
+      wa_jid:
+        example: 5511999999999@s.whatsapp.net
+        type: string
+    type: object
+  dto.SuccessResponse:
+    description: Resposta de sucesso padrão da API
+    properties:
+      data: {}
+      message:
+        example: Operação realizada com sucesso
+        type: string
+      success:
+        example: true
+        type: boolean
+    type: object
+  dto.SystemMetrics:
+    description: Métricas relacionadas ao sistema
+    properties:
+      cpu_usage:
+        example: 15%
+        type: string
+      database_connections:
+        example: 5
+        type: integer
+      database_status:
+        example: healthy
+        type: string
+      memory_usage:
+        example: 256MB
+        type: string
+      uptime:
+        example: 2h30m45s
+        type: string
+    type: object
+  dto.WhatsAppMetrics:
+    description: Métricas relacionadas ao WhatsApp
+    properties:
+      authenticated_clients:
+        example: 2
+        type: integer
+      connected_clients:
+        example: 3
+        type: integer
+      error_clients:
+        example: 1
+        type: integer
+      messages_received:
+        example: 75
+        type: integer
+      messages_sent:
+        example: 150
+        type: integer
+      total_clients:
+        example: 5
+        type: integer
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@wazmeow.com
+    name: WazMeow API Support
+    url: https://github.com/wazmeow/wazmeow
+  description: Autenticação básica HTTP. Configure AUTH_TYPE=basic no .env para habilitar.
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: https://github.com/wazmeow/wazmeow/blob/main/LICENSE
+  title: WazMeow API
+  version: 1.0.0
+paths:
+  /health:
+    get:
+      consumes:
+      - application/json
+      description: Verifica o status de saúde da aplicação e seus serviços dependentes
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Aplicação saudável
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.HealthResponse'
+              type: object
+        "503":
+          description: Serviços indisponíveis
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Health Check da aplicação
+      tags:
+      - Health
+  /metrics:
+    get:
+      consumes:
+      - application/json
+      description: Retorna métricas detalhadas da aplicação incluindo sessões, WhatsApp
+        e sistema
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Métricas da aplicação
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.MetricsResponse'
+              type: object
+        "500":
+          description: Erro interno
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Métricas da aplicação
+      tags:
+      - Health
+  /sessions/{id}:
+    delete:
+      description: Deleta uma sessão WhatsApp específica por ID ou nome. Sempre força
+        a deleção mesmo se conectada
+      parameters:
+      - description: ID da sessão (UUID) ou nome da sessão
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Sessão deletada
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.DeleteSessionResponse'
+              type: object
+        "400":
+          description: Identificador da sessão inválido
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Sessão não encontrada
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Erro interno
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Deletar sessão WhatsApp
+      tags:
+      - Sessions
+  /sessions/{id}/connect:
+    post:
+      consumes:
+      - application/json
+      description: Conecta uma sessão WhatsApp específica por ID ou nome. Pode gerar
+        QR Code se necessário
+      parameters:
+      - description: ID da sessão (UUID) ou nome da sessão
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Sessão conectada ou QR Code gerado
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.ConnectSessionResponse'
+              type: object
+        "400":
+          description: Identificador da sessão inválido
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Sessão não encontrada
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "409":
+          description: Sessão já conectada
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Erro interno
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Conectar sessão WhatsApp
+      tags:
+      - Sessions
+  /sessions/{id}/info:
+    get:
+      consumes:
+      - application/json
+      description: Retorna as informações detalhadas de uma sessão específica por
+        ID ou nome, incluindo status completo
+      parameters:
+      - description: ID da sessão (UUID) ou nome da sessão
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Detalhes da sessão
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.SessionResponse'
+              type: object
+        "400":
+          description: Identificador da sessão inválido
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Sessão não encontrada
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Erro interno
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Obter detalhes da sessão
+      tags:
+      - Sessions
+  /sessions/{id}/logout:
+    post:
+      consumes:
+      - application/json
+      description: Desconecta a sessão do WhatsApp, encerrando a comunicação
+      parameters:
+      - description: ID da sessão (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Sessão desconectada
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.DisconnectSessionResponse'
+              type: object
+        "400":
+          description: ID da sessão inválido
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Sessão não encontrada
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "409":
+          description: Sessão já desconectada
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Erro interno
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Desconectar sessão (logout)
+      tags:
+      - Sessions
+  /sessions/{id}/pairphone:
+    post:
+      consumes:
+      - application/json
+      description: Emparelha um telefone com a sessão WhatsApp por ID ou nome
+      parameters:
+      - description: ID da sessão (UUID) ou nome da sessão
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Dados do telefone
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.PairPhoneRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Telefone emparelhado
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.PairPhoneResponse'
+              type: object
+        "400":
+          description: Dados inválidos
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Sessão não encontrada
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Erro interno
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Emparelhar telefone com sessão
+      tags:
+      - Sessions
+  /sessions/{id}/proxy/set:
+    post:
+      consumes:
+      - application/json
+      description: Configura proxy para a sessão WhatsApp por ID ou nome
+      parameters:
+      - description: ID da sessão (UUID) ou nome da sessão
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Configuração do proxy
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ProxySetRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Proxy configurado
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.ProxySetResponse'
+              type: object
+        "400":
+          description: Dados inválidos
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Sessão não encontrada
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Erro interno
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Configurar proxy para sessão
+      tags:
+      - Sessions
+  /sessions/{id}/qr:
+    get:
+      consumes:
+      - application/json
+      description: Gera um QR Code para autenticação de uma sessão WhatsApp específica
+        por ID ou nome
+      parameters:
+      - description: ID da sessão (UUID) ou nome da sessão
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: QR Code gerado
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.QRCodeResponse'
+              type: object
+        "400":
+          description: Identificador da sessão inválido
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Sessão não encontrada
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "409":
+          description: Sessão já autenticada
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Erro interno
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Gerar QR Code para autenticação
+      tags:
+      - Sessions
+  /sessions/add:
+    post:
+      consumes:
+      - application/json
+      description: Cria uma nova sessão WhatsApp com o nome especificado
+      parameters:
+      - description: Dados da sessão
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateSessionRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Sessão criada com sucesso
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.SessionResponse'
+              type: object
+        "400":
+          description: Dados inválidos
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "409":
+          description: Sessão já existe
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Erro interno
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Criar nova sessão WhatsApp
+      tags:
+      - Sessions
+  /sessions/list:
+    get:
+      consumes:
+      - application/json
+      description: Lista todas as sessões WhatsApp registradas no sistema
+      parameters:
+      - description: Filtrar por status
+        enum:
+        - disconnected
+        - connecting
+        - connected
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lista de sessões
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.SessionListResponse'
+              type: object
+        "400":
+          description: Parâmetros inválidos
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Erro interno
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Listar sessões WhatsApp
+      tags:
+      - Sessions
+produces:
+- application/json
+schemes:
+- http
+- https
+securityDefinitions:
+  ApiKeyAuth:
+    description: API Key para autenticação. Configure AUTH_ENABLED=true no .env para
+      habilitar.
+    in: header
+    name: X-API-Key
+    type: apiKey
+  BasicAuth:
+    type: basic
+swagger: "2.0"
+tags:
+- description: Operações de gerenciamento de sessões WhatsApp
+  name: Sessions
+- description: Endpoints de monitoramento e saúde da aplicação
+  name: Health

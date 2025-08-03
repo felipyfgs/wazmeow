@@ -28,5 +28,16 @@ go.work.sum
 .env
 
 # Editor/IDE
-# .idea/
-# .vscode/
+.idea/
+.vscode/
+
+# AI Agent files
+CRUSH.md
+.augment/
+.crush/
+
+# Build artifacts
+bin/
+
+# Log files
+logs/
