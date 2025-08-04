@@ -61,15 +61,6 @@ func (m *Migrator) Migrate(ctx context.Context) error {
 
 // createTable creates a table if it doesn't exist
 func (m *Migrator) createTable(ctx context.Context, model interface{}) error {
-	_, err := m.db.NewCreateTable().
-		Model(model).
-		IfNotExists().
-		Exec(ctx)
-
-	if err != nil {
-		return err
-	}
-
 	// Log table creation with simple name extraction
 	var tableName string
 	switch model.(type) {
@@ -78,6 +69,38 @@ func (m *Migrator) createTable(ctx context.Context, model interface{}) error {
 	default:
 		tableName = "unknown"
 	}
+
+	m.logger.InfoWithFields("creating table", logger.Fields{
+		"table": tableName,
+	})
+
+	// Use Bun's CreateTable
+	query := m.db.NewCreateTable().
+		Model(model).
+		IfNotExists()
+
+	// Log the SQL query for debugging
+	sqlQuery, args := query.AppendQuery(m.db.Formatter(), nil)
+	m.logger.DebugWithFields("executing create table query", logger.Fields{
+		"table": tableName,
+		"sql":   string(sqlQuery),
+		"args":  args,
+	})
+
+	_, err := query.Exec(ctx)
+
+	if err != nil {
+		m.logger.ErrorWithError("failed to create table", err, logger.Fields{
+			"table": tableName,
+			"sql":   string(sqlQuery),
+		})
+		return err
+	}
+
+	// Table creation completed successfully
+	m.logger.DebugWithFields("table creation completed", logger.Fields{
+		"table": tableName,
+	})
 
 	m.logger.InfoWithFields("table created or verified", logger.Fields{
 		"table": tableName,
@@ -117,7 +140,8 @@ func (m *Migrator) createTriggers(ctx context.Context) error {
 
 	var triggers []string
 
-	if dialectName == "*sqlitedialect.Dialect" {
+	switch dialectName {
+	case "*sqlitedialect.Dialect":
 		triggers = []string{
 			// SQLite trigger for WazMeow sessions table
 			`CREATE TRIGGER IF NOT EXISTS update_wazmeow_sessions_updated_at
@@ -126,7 +150,7 @@ func (m *Migrator) createTriggers(ctx context.Context) error {
 			   UPDATE wazmeow_sessions SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
 			 END`,
 		}
-	} else if dialectName == "*pgdialect.Dialect" {
+	case "*pgdialect.Dialect":
 		// PostgreSQL uses functions and triggers differently
 		triggers = []string{
 			// Create function for updating timestamp
@@ -144,7 +168,7 @@ func (m *Migrator) createTriggers(ctx context.Context) error {
 			 BEFORE UPDATE ON wazmeow_sessions
 			 FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()`,
 		}
-	} else {
+	default:
 		m.logger.WarnWithFields("unknown database type, skipping triggers", logger.Fields{
 			"database": dialectName,
 		})
@@ -174,17 +198,18 @@ func (m *Migrator) runSchemaMigrations(ctx context.Context) error {
 
 	var migrations []string
 
-	if dialectName == "*sqlitedialect.Dialect" {
+	switch dialectName {
+	case "*sqlitedialect.Dialect":
 		migrations = []string{
 			// Add proxy_config column to wazmeow_sessions table
 			`ALTER TABLE wazmeow_sessions ADD COLUMN proxy_config TEXT DEFAULT NULL`,
 		}
-	} else if dialectName == "*pgdialect.Dialect" {
+	case "*pgdialect.Dialect":
 		migrations = []string{
 			// Add proxy_config column to wazmeow_sessions table
 			`ALTER TABLE wazmeow_sessions ADD COLUMN IF NOT EXISTS proxy_config JSONB DEFAULT NULL`,
 		}
-	} else {
+	default:
 		m.logger.WarnWithFields("unknown database type, skipping schema migrations", logger.Fields{
 			"database": dialectName,
 		})

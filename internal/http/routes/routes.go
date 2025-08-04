@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	httpSwagger "github.com/swaggo/http-swagger"
 
 	"wazmeow/internal/http/handler"
 	"wazmeow/internal/http/middleware"
@@ -153,5 +154,5 @@ func (rt *Router) setupSessionRoutes(r chi.Router) {
 // setupSwaggerRoute configures the Swagger documentation route
 func (rt *Router) setupSwaggerRoute(r *chi.Mux) {
 	// Swagger documentation route - accessible without authentication
-	r.Get("/swagger/*", GetSwaggerHandler())
+	r.Get("/swagger/*", httpSwagger.WrapHandler)
 }

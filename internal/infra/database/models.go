@@ -29,10 +29,10 @@ type WazMeowSessionModel struct {
 	Status      string       `bun:"status,notnull,type:varchar(20),default:'disconnected'" json:"status"`
 	WaJID       string       `bun:"wa_jid,type:varchar(100)" json:"wa_jid,omitempty"`
 	QRCode      string       `bun:"qr_code,type:text" json:"qr_code,omitempty"`
-	ProxyConfig *ProxyConfig `bun:"proxy_config,type:jsonb" json:"proxy_config,omitempty"`
+	ProxyConfig *ProxyConfig `bun:"proxy_config,type:text" json:"proxy_config,omitempty"`
 	IsActive    bool         `bun:"is_active,notnull,default:false" json:"is_active"`
-	CreatedAt   time.Time    `bun:"created_at,notnull,default:current_timestamp" json:"created_at"`
-	UpdatedAt   time.Time    `bun:"updated_at,notnull,default:current_timestamp" json:"updated_at"`
+	CreatedAt   time.Time    `bun:"created_at,notnull,default:current_timestamp,type:datetime" json:"created_at"`
+	UpdatedAt   time.Time    `bun:"updated_at,notnull,default:current_timestamp,type:datetime" json:"updated_at"`
 }
 
 // ToWazMeowSessionModel converts a domain session to database model

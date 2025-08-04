@@ -18,10 +18,10 @@
 //	@securityDefinitions.apikey	ApiKeyAuth
 //	@in							header
 //	@name						X-API-Key
-//	@description				API Key para autenticação. Configure AUTH_ENABLED=true no .env para habilitar.
+//	@description				API Key para autenticação. Configure AUTH_ENABLED=true e AUTH_TYPE=api_key no .env. Exemplo: X-API-Key: sua-chave-api-aqui
 //
 //	@securityDefinitions.basic	BasicAuth
-//	@description				Autenticação básica HTTP. Configure AUTH_TYPE=basic no .env para habilitar.
+//	@description				Autenticação básica HTTP (username:password). Configure AUTH_ENABLED=true e AUTH_TYPE=basic no .env. Exemplo: Authorization: Basic dXNlcjpwYXNz
 //
 //	@schemes	http https
 //	@produce	json

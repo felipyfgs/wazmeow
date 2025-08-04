@@ -32,7 +32,7 @@ const docTemplate = `{
     "paths": {
         "/health": {
             "get": {
-                "description": "Verifica o status de saúde da aplicação e seus serviços dependentes",
+                "description": "Verifica o status de saúde da aplicação e todos os seus serviços dependentes (banco de dados, WhatsApp, etc.).\n\n**Informações retornadas:**\n- Status geral da aplicação (healthy/unhealthy)\n- Versão da aplicação\n- Tempo de atividade (uptime)\n- Status individual de cada serviço\n- Timestamp da verificação\n\n**Status possíveis:**\n- ` + "`" + `healthy` + "`" + `: Todos os serviços funcionando normalmente\n- ` + "`" + `unhealthy` + "`" + `: Um ou mais serviços com problemas\n- ` + "`" + `degraded` + "`" + `: Serviços funcionando com limitações",
                 "consumes": [
                     "application/json"
                 ],
@@ -45,17 +45,17 @@ const docTemplate = `{
                 "summary": "Health Check da aplicação",
                 "responses": {
                     "200": {
-                        "description": "Aplicação saudável",
+                        "description": "Aplicação e serviços saudáveis",
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/dto.SuccessResponse"
+                                    "$ref": "#/definitions/wazmeow_internal_http_dto.SuccessResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/dto.HealthResponse"
+                                            "$ref": "#/definitions/wazmeow_internal_http_dto.HealthResponse"
                                         }
                                     }
                                 }
@@ -63,9 +63,9 @@ const docTemplate = `{
                         }
                     },
                     "503": {
-                        "description": "Serviços indisponíveis",
+                        "description": "Um ou mais serviços indisponíveis",
                         "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
+                            "$ref": "#/definitions/wazmeow_internal_http_dto.ErrorResponse"
                         }
                     }
                 }
@@ -73,7 +73,7 @@ const docTemplate = `{
         },
         "/metrics": {
             "get": {
-                "description": "Retorna métricas detalhadas da aplicação incluindo sessões, WhatsApp e sistema",
+                "description": "Retorna métricas detalhadas e estatísticas de performance da aplicação, incluindo informações sobre sessões, WhatsApp e sistema.\n\n**Métricas incluídas:**\n\n**Sessões:**\n- Total de sessões criadas\n- Sessões conectadas/desconectadas\n- Sessões com erro\n- Sessões ativas\n\n**WhatsApp:**\n- Total de clientes WhatsApp\n- Clientes conectados e autenticados\n- Mensagens enviadas e recebidas\n- Clientes com erro\n\n**Sistema:**\n- Tempo de atividade (uptime)\n- Uso de memória\n- Uso de CPU\n- Status do banco de dados\n- Conexões ativas do banco",
                 "consumes": [
                     "application/json"
                 ],
@@ -86,17 +86,17 @@ const docTemplate = `{
                 "summary": "Métricas da aplicação",
                 "responses": {
                     "200": {
-                        "description": "Métricas da aplicação",
+                        "description": "Métricas coletadas com sucesso",
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/dto.SuccessResponse"
+                                    "$ref": "#/definitions/wazmeow_internal_http_dto.SuccessResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/dto.MetricsResponse"
+                                            "$ref": "#/definitions/wazmeow_internal_http_dto.MetricsResponse"
                                         }
                                     }
                                 }
@@ -104,9 +104,9 @@ const docTemplate = `{
                         }
                     },
                     "500": {
-                        "description": "Erro interno",
+                        "description": "Erro interno ao coletar métricas",
                         "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
+                            "$ref": "#/definitions/wazmeow_internal_http_dto.ErrorResponse"
                         }
                     }
                 }
@@ -119,7 +119,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Cria uma nova sessão WhatsApp com o nome especificado",
+                "description": "Cria uma nova sessão WhatsApp com configuração opcional de proxy. A sessão é criada no estado 'disconnected' e pode ser conectada posteriormente.\n\n**Exemplos de uso:**\n- Sessão simples: ` + "`" + `{\"name\": \"minha-sessao\"}` + "`" + `\n- Sessão com proxy HTTP: ` + "`" + `{\"name\": \"sessao-proxy\", \"proxy_host\": \"78.24.204.134\", \"proxy_port\": 62122, \"proxy_type\": \"http\", \"username\": \"user\", \"password\": \"pass\"}` + "`" + `\n- Sessão com proxy SOCKS5: ` + "`" + `{\"name\": \"sessao-socks5\", \"proxy_host\": \"78.24.204.134\", \"proxy_port\": 62123, \"proxy_type\": \"socks5\"}` + "`" + `",
                 "consumes": [
                     "application/json"
                 ],
@@ -137,7 +137,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.CreateSessionRequest"
+                            "$ref": "#/definitions/wazmeow_internal_http_dto.CreateSessionRequest"
                         }
                     }
                 ],
@@ -147,13 +147,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/dto.SuccessResponse"
+                                    "$ref": "#/definitions/wazmeow_internal_http_dto.SuccessResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/dto.SessionResponse"
+                                            "$ref": "#/definitions/wazmeow_internal_http_dto.SessionResponse"
                                         }
                                     }
                                 }
@@ -161,21 +161,27 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Dados inválidos",
+                        "description": "Dados inválidos (nome muito curto, proxy inválido, etc.)",
                         "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
+                            "$ref": "#/definitions/wazmeow_internal_http_dto.ErrorResponse"
                         }
                     },
                     "409": {
-                        "description": "Sessão já existe",
+                        "description": "Sessão com este nome já existe",
                         "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
+                            "$ref": "#/definitions/wazmeow_internal_http_dto.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Dados válidos mas incompatíveis (ex: username sem password)",
+                        "schema": {
+                            "$ref": "#/definitions/wazmeow_internal_http_dto.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Erro interno",
+                        "description": "Erro interno do servidor",
                         "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
+                            "$ref": "#/definitions/wazmeow_internal_http_dto.ErrorResponse"
                         }
                     }
                 }
@@ -188,7 +194,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Lista todas as sessões WhatsApp registradas no sistema",
+                "description": "Lista todas as sessões WhatsApp registradas no sistema com informações detalhadas incluindo status, configuração de proxy e timestamps.\n\n**Filtros disponíveis:**\n- ` + "`" + `status` + "`" + `: Filtra sessões por status (disconnected, connecting, connected)\n\n**Resposta inclui:**\n- Lista de sessões com configuração completa\n- Total de sessões encontradas\n- Informações de proxy (se configurado)",
                 "consumes": [
                     "application/json"
                 ],
@@ -207,24 +213,24 @@ const docTemplate = `{
                             "connected"
                         ],
                         "type": "string",
-                        "description": "Filtrar por status",
+                        "description": "Filtrar por status da sessão",
                         "name": "status",
                         "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Lista de sessões",
+                        "description": "Lista de sessões recuperada com sucesso",
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/dto.SuccessResponse"
+                                    "$ref": "#/definitions/wazmeow_internal_http_dto.SuccessResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/dto.SessionListResponse"
+                                            "$ref": "#/definitions/wazmeow_internal_http_dto.SessionListResponse"
                                         }
                                     }
                                 }
@@ -232,15 +238,15 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Parâmetros inválidos",
+                        "description": "Parâmetros de filtro inválidos",
                         "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
+                            "$ref": "#/definitions/wazmeow_internal_http_dto.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Erro interno",
+                        "description": "Erro interno do servidor",
                         "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
+                            "$ref": "#/definitions/wazmeow_internal_http_dto.ErrorResponse"
                         }
                     }
                 }
@@ -276,13 +282,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/dto.SuccessResponse"
+                                    "$ref": "#/definitions/wazmeow_internal_http_dto.SuccessResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/dto.DeleteSessionResponse"
+                                            "$ref": "#/definitions/wazmeow_internal_http_dto.DeleteSessionResponse"
                                         }
                                     }
                                 }
@@ -292,19 +298,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Identificador da sessão inválido",
                         "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
+                            "$ref": "#/definitions/wazmeow_internal_http_dto.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Sessão não encontrada",
                         "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
+                            "$ref": "#/definitions/wazmeow_internal_http_dto.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Erro interno",
                         "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
+                            "$ref": "#/definitions/wazmeow_internal_http_dto.ErrorResponse"
                         }
                     }
                 }
@@ -317,7 +323,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Conecta uma sessão WhatsApp específica por ID ou nome. Pode gerar QR Code se necessário",
+                "description": "Inicia o processo de conexão de uma sessão WhatsApp. Se a sessão não estiver autenticada, gera um QR Code para escaneamento.\n\n**Fluxo de conexão:**\n1. Sessão não autenticada: Retorna QR Code para escaneamento\n2. Sessão autenticada: Conecta diretamente ao WhatsApp\n3. Sessão já conectada: Retorna erro 409\n\n**Identificadores aceitos:**\n- UUID da sessão: ` + "`" + `4ee6195b-6a0f-4c85-a4ee-673ee15f14c8` + "`" + `\n- Nome da sessão: ` + "`" + `minha-sessao` + "`" + `",
                 "consumes": [
                     "application/json"
                 ],
@@ -331,6 +337,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
+                        "example": "\"minha-sessao\"",
                         "description": "ID da sessão (UUID) ou nome da sessão",
                         "name": "id",
                         "in": "path",
@@ -339,17 +346,17 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Sessão conectada ou QR Code gerado",
+                        "description": "Processo de conexão iniciado (QR Code gerado ou sessão conectada)",
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/dto.SuccessResponse"
+                                    "$ref": "#/definitions/wazmeow_internal_http_dto.SuccessResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/dto.ConnectSessionResponse"
+                                            "$ref": "#/definitions/wazmeow_internal_http_dto.ConnectSessionResponse"
                                         }
                                     }
                                 }
@@ -357,27 +364,27 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Identificador da sessão inválido",
+                        "description": "Identificador da sessão inválido ou malformado",
                         "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
+                            "$ref": "#/definitions/wazmeow_internal_http_dto.ErrorResponse"
                         }
                     },
                     "404": {
-                        "description": "Sessão não encontrada",
+                        "description": "Sessão não encontrada com o identificador fornecido",
                         "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
+                            "$ref": "#/definitions/wazmeow_internal_http_dto.ErrorResponse"
                         }
                     },
                     "409": {
-                        "description": "Sessão já conectada",
+                        "description": "Sessão já está conectada",
                         "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
+                            "$ref": "#/definitions/wazmeow_internal_http_dto.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Erro interno",
+                        "description": "Erro interno do servidor ou falha na conexão WhatsApp",
                         "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
+                            "$ref": "#/definitions/wazmeow_internal_http_dto.ErrorResponse"
                         }
                     }
                 }
@@ -416,13 +423,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/dto.SuccessResponse"
+                                    "$ref": "#/definitions/wazmeow_internal_http_dto.SuccessResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/dto.SessionResponse"
+                                            "$ref": "#/definitions/wazmeow_internal_http_dto.SessionResponse"
                                         }
                                     }
                                 }
@@ -432,19 +439,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Identificador da sessão inválido",
                         "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
+                            "$ref": "#/definitions/wazmeow_internal_http_dto.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Sessão não encontrada",
                         "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
+                            "$ref": "#/definitions/wazmeow_internal_http_dto.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Erro interno",
                         "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
+                            "$ref": "#/definitions/wazmeow_internal_http_dto.ErrorResponse"
                         }
                     }
                 }
@@ -483,13 +490,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/dto.SuccessResponse"
+                                    "$ref": "#/definitions/wazmeow_internal_http_dto.SuccessResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/dto.DisconnectSessionResponse"
+                                            "$ref": "#/definitions/wazmeow_internal_http_dto.DisconnectSessionResponse"
                                         }
                                     }
                                 }
@@ -499,25 +506,25 @@ const docTemplate = `{
                     "400": {
                         "description": "ID da sessão inválido",
                         "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
+                            "$ref": "#/definitions/wazmeow_internal_http_dto.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Sessão não encontrada",
                         "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
+                            "$ref": "#/definitions/wazmeow_internal_http_dto.ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Sessão já desconectada",
                         "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
+                            "$ref": "#/definitions/wazmeow_internal_http_dto.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Erro interno",
                         "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
+                            "$ref": "#/definitions/wazmeow_internal_http_dto.ErrorResponse"
                         }
                     }
                 }
@@ -555,7 +562,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.PairPhoneRequest"
+                            "$ref": "#/definitions/wazmeow_internal_http_dto.PairPhoneRequest"
                         }
                     }
                 ],
@@ -565,13 +572,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/dto.SuccessResponse"
+                                    "$ref": "#/definitions/wazmeow_internal_http_dto.SuccessResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/dto.PairPhoneResponse"
+                                            "$ref": "#/definitions/wazmeow_internal_http_dto.PairPhoneResponse"
                                         }
                                     }
                                 }
@@ -581,19 +588,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Dados inválidos",
                         "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
+                            "$ref": "#/definitions/wazmeow_internal_http_dto.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Sessão não encontrada",
                         "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
+                            "$ref": "#/definitions/wazmeow_internal_http_dto.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Erro interno",
                         "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
+                            "$ref": "#/definitions/wazmeow_internal_http_dto.ErrorResponse"
                         }
                     }
                 }
@@ -606,7 +613,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Configura proxy para a sessão WhatsApp por ID ou nome",
+                "description": "Configura ou atualiza a configuração de proxy para uma sessão existente. O proxy será usado para todas as conexões WhatsApp desta sessão.\n\n**Tipos de proxy suportados:**\n- HTTP: Proxy HTTP/HTTPS padrão\n- SOCKS5: Proxy SOCKS5 com suporte a autenticação\n\n**Exemplos de configuração:**\n- Proxy HTTP: ` + "`" + `{\"proxy_host\": \"78.24.204.134\", \"proxy_port\": 62122, \"proxy_type\": \"http\"}` + "`" + `\n- Proxy com autenticação: ` + "`" + `{\"proxy_host\": \"78.24.204.134\", \"proxy_port\": 62122, \"proxy_type\": \"http\", \"username\": \"user\", \"password\": \"pass\"}` + "`" + `\n- Proxy SOCKS5: ` + "`" + `{\"proxy_host\": \"78.24.204.134\", \"proxy_port\": 62123, \"proxy_type\": \"socks5\", \"username\": \"user\", \"password\": \"pass\"}` + "`" + `",
                 "consumes": [
                     "application/json"
                 ],
@@ -620,6 +627,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
+                        "example": "\"minha-sessao\"",
                         "description": "ID da sessão (UUID) ou nome da sessão",
                         "name": "id",
                         "in": "path",
@@ -631,23 +639,23 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.ProxySetRequest"
+                            "$ref": "#/definitions/wazmeow_internal_http_dto.ProxySetRequest"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Proxy configurado",
+                        "description": "Proxy configurado com sucesso",
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/dto.SuccessResponse"
+                                    "$ref": "#/definitions/wazmeow_internal_http_dto.SuccessResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/dto.ProxySetResponse"
+                                            "$ref": "#/definitions/wazmeow_internal_http_dto.ProxySetResponse"
                                         }
                                     }
                                 }
@@ -655,21 +663,27 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Dados inválidos",
+                        "description": "Dados de proxy inválidos (host, porta, tipo, etc.)",
                         "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
+                            "$ref": "#/definitions/wazmeow_internal_http_dto.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Sessão não encontrada",
                         "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
+                            "$ref": "#/definitions/wazmeow_internal_http_dto.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Configuração de proxy inválida (ex: username sem password)",
+                        "schema": {
+                            "$ref": "#/definitions/wazmeow_internal_http_dto.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Erro interno",
+                        "description": "Erro interno do servidor",
                         "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
+                            "$ref": "#/definitions/wazmeow_internal_http_dto.ErrorResponse"
                         }
                     }
                 }
@@ -708,13 +722,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/dto.SuccessResponse"
+                                    "$ref": "#/definitions/wazmeow_internal_http_dto.SuccessResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/dto.QRCodeResponse"
+                                            "$ref": "#/definitions/wazmeow_internal_http_dto.QRCodeResponse"
                                         }
                                     }
                                 }
@@ -724,25 +738,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Identificador da sessão inválido",
                         "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
+                            "$ref": "#/definitions/wazmeow_internal_http_dto.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Sessão não encontrada",
                         "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
+                            "$ref": "#/definitions/wazmeow_internal_http_dto.ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Sessão já autenticada",
                         "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
+                            "$ref": "#/definitions/wazmeow_internal_http_dto.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Erro interno",
                         "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
+                            "$ref": "#/definitions/wazmeow_internal_http_dto.ErrorResponse"
                         }
                     }
                 }
@@ -750,7 +764,7 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "dto.ConnectSessionResponse": {
+        "wazmeow_internal_http_dto.ConnectSessionResponse": {
             "description": "Resposta da operação de conexão de sessão",
             "type": "object",
             "properties": {
@@ -767,11 +781,11 @@ const docTemplate = `{
                     "example": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."
                 },
                 "session": {
-                    "$ref": "#/definitions/dto.SessionResponse"
+                    "$ref": "#/definitions/wazmeow_internal_http_dto.SessionResponse"
                 }
             }
         },
-        "dto.CreateSessionRequest": {
+        "wazmeow_internal_http_dto.CreateSessionRequest": {
             "description": "Dados para criação de uma nova sessão WhatsApp",
             "type": "object",
             "required": [
@@ -781,10 +795,44 @@ const docTemplate = `{
                 "name": {
                     "type": "string",
                     "example": "minha-sessao"
+                },
+                "password": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 1,
+                    "example": "YGFEu7Wx"
+                },
+                "proxy_host": {
+                    "type": "string",
+                    "example": "78.24.204.134"
+                },
+                "proxy_port": {
+                    "type": "integer",
+                    "maximum": 65535,
+                    "minimum": 1,
+                    "example": 62122
+                },
+                "proxy_type": {
+                    "enum": [
+                        "http",
+                        "socks5"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/wazmeow_internal_http_dto.ProxyType"
+                        }
+                    ],
+                    "example": "http"
+                },
+                "username": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 1,
+                    "example": "sgQ4BJZs"
                 }
             }
         },
-        "dto.DeleteSessionResponse": {
+        "wazmeow_internal_http_dto.DeleteSessionResponse": {
             "type": "object",
             "properties": {
                 "message": {
@@ -795,18 +843,18 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.DisconnectSessionResponse": {
+        "wazmeow_internal_http_dto.DisconnectSessionResponse": {
             "type": "object",
             "properties": {
                 "message": {
                     "type": "string"
                 },
                 "session": {
-                    "$ref": "#/definitions/dto.SessionResponse"
+                    "$ref": "#/definitions/wazmeow_internal_http_dto.SessionResponse"
                 }
             }
         },
-        "dto.ErrorResponse": {
+        "wazmeow_internal_http_dto.ErrorResponse": {
             "description": "Resposta de erro padrão da API",
             "type": "object",
             "properties": {
@@ -814,7 +862,10 @@ const docTemplate = `{
                     "type": "string",
                     "example": "INTERNAL_ERROR"
                 },
-                "context": {},
+                "context": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
                 "details": {
                     "type": "string",
                     "example": "Detalhes técnicos do erro"
@@ -823,13 +874,21 @@ const docTemplate = `{
                     "type": "string",
                     "example": "Erro interno do servidor"
                 },
+                "status": {
+                    "type": "string",
+                    "example": "error"
+                },
                 "success": {
                     "type": "boolean",
                     "example": false
+                },
+                "timestamp": {
+                    "type": "string",
+                    "example": "2024-01-01T12:00:00Z"
                 }
             }
         },
-        "dto.HealthResponse": {
+        "wazmeow_internal_http_dto.HealthResponse": {
             "description": "Resposta do health check da aplicação",
             "type": "object",
             "properties": {
@@ -855,26 +914,26 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.MetricsResponse": {
+        "wazmeow_internal_http_dto.MetricsResponse": {
             "description": "Métricas completas da aplicação",
             "type": "object",
             "properties": {
                 "sessions": {
-                    "$ref": "#/definitions/dto.SessionMetrics"
+                    "$ref": "#/definitions/wazmeow_internal_http_dto.SessionMetrics"
                 },
                 "system": {
-                    "$ref": "#/definitions/dto.SystemMetrics"
+                    "$ref": "#/definitions/wazmeow_internal_http_dto.SystemMetrics"
                 },
                 "timestamp": {
                     "type": "string",
                     "example": "2024-01-01T12:00:00Z"
                 },
                 "whatsapp": {
-                    "$ref": "#/definitions/dto.WhatsAppMetrics"
+                    "$ref": "#/definitions/wazmeow_internal_http_dto.WhatsAppMetrics"
                 }
             }
         },
-        "dto.PairPhoneRequest": {
+        "wazmeow_internal_http_dto.PairPhoneRequest": {
             "description": "Dados para emparelhamento com número de telefone",
             "type": "object",
             "required": [
@@ -887,7 +946,7 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.PairPhoneResponse": {
+        "wazmeow_internal_http_dto.PairPhoneResponse": {
             "description": "Resposta do emparelhamento com telefone",
             "type": "object",
             "properties": {
@@ -909,28 +968,78 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.ProxySetRequest": {
+        "wazmeow_internal_http_dto.ProxyConfigResponse": {
+            "description": "Configuração do proxy",
+            "type": "object",
+            "properties": {
+                "host": {
+                    "type": "string",
+                    "example": "78.24.204.134"
+                },
+                "password": {
+                    "type": "string",
+                    "example": "YGFEu7Wx"
+                },
+                "port": {
+                    "type": "integer",
+                    "example": 62122
+                },
+                "type": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/wazmeow_internal_http_dto.ProxyType"
+                        }
+                    ],
+                    "example": "http"
+                },
+                "username": {
+                    "type": "string",
+                    "example": "sgQ4BJZs"
+                }
+            }
+        },
+        "wazmeow_internal_http_dto.ProxySetRequest": {
             "description": "Configuração de proxy para a sessão",
             "type": "object",
             "required": [
-                "proxy_url"
+                "proxy_host",
+                "proxy_port",
+                "proxy_type"
             ],
             "properties": {
                 "password": {
                     "type": "string",
-                    "example": "pass"
+                    "example": "YGFEu7Wx"
                 },
-                "proxy_url": {
+                "proxy_host": {
                     "type": "string",
-                    "example": "http://proxy.example.com:8080"
+                    "example": "78.24.204.134"
+                },
+                "proxy_port": {
+                    "type": "integer",
+                    "maximum": 65535,
+                    "minimum": 1,
+                    "example": 62122
+                },
+                "proxy_type": {
+                    "enum": [
+                        "http",
+                        "socks5"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/wazmeow_internal_http_dto.ProxyType"
+                        }
+                    ],
+                    "example": "http"
                 },
                 "username": {
                     "type": "string",
-                    "example": "user"
+                    "example": "sgQ4BJZs"
                 }
             }
         },
-        "dto.ProxySetResponse": {
+        "wazmeow_internal_http_dto.ProxySetResponse": {
             "description": "Resposta da configuração de proxy",
             "type": "object",
             "properties": {
@@ -952,7 +1061,19 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.QRCodeResponse": {
+        "wazmeow_internal_http_dto.ProxyType": {
+            "description": "Tipo de proxy suportado",
+            "type": "string",
+            "enum": [
+                "http",
+                "socks5"
+            ],
+            "x-enum-varnames": [
+                "ProxyTypeHTTP",
+                "ProxyTypeSOCKS5"
+            ]
+        },
+        "wazmeow_internal_http_dto.QRCodeResponse": {
             "description": "Resposta com QR Code para autenticação",
             "type": "object",
             "properties": {
@@ -970,14 +1091,14 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.SessionListResponse": {
+        "wazmeow_internal_http_dto.SessionListResponse": {
             "description": "Lista de sessões WhatsApp",
             "type": "object",
             "properties": {
                 "sessions": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/dto.SessionResponse"
+                        "$ref": "#/definitions/wazmeow_internal_http_dto.SessionResponse"
                     }
                 },
                 "total": {
@@ -986,7 +1107,7 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.SessionMetrics": {
+        "wazmeow_internal_http_dto.SessionMetrics": {
             "description": "Métricas relacionadas às sessões WhatsApp",
             "type": "object",
             "properties": {
@@ -1012,7 +1133,7 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.SessionResponse": {
+        "wazmeow_internal_http_dto.SessionResponse": {
             "description": "Dados de uma sessão WhatsApp",
             "type": "object",
             "properties": {
@@ -1031,6 +1152,9 @@ const docTemplate = `{
                 "name": {
                     "type": "string",
                     "example": "minha-sessao"
+                },
+                "proxy_config": {
+                    "$ref": "#/definitions/wazmeow_internal_http_dto.ProxyConfigResponse"
                 },
                 "status": {
                     "type": "string",
@@ -1051,7 +1175,7 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.SuccessResponse": {
+        "wazmeow_internal_http_dto.SuccessResponse": {
             "description": "Resposta de sucesso padrão da API",
             "type": "object",
             "properties": {
@@ -1060,13 +1184,17 @@ const docTemplate = `{
                     "type": "string",
                     "example": "Operação realizada com sucesso"
                 },
+                "status": {
+                    "type": "string",
+                    "example": "success"
+                },
                 "success": {
                     "type": "boolean",
                     "example": true
                 }
             }
         },
-        "dto.SystemMetrics": {
+        "wazmeow_internal_http_dto.SystemMetrics": {
             "description": "Métricas relacionadas ao sistema",
             "type": "object",
             "properties": {
@@ -1092,7 +1220,7 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.WhatsAppMetrics": {
+        "wazmeow_internal_http_dto.WhatsAppMetrics": {
             "description": "Métricas relacionadas ao WhatsApp",
             "type": "object",
             "properties": {
@@ -1125,7 +1253,7 @@ const docTemplate = `{
     },
     "securityDefinitions": {
         "ApiKeyAuth": {
-            "description": "API Key para autenticação. Configure AUTH_ENABLED=true no .env para habilitar.",
+            "description": "API Key para autenticação. Configure AUTH_ENABLED=true e AUTH_TYPE=api_key no .env. Exemplo: X-API-Key: sua-chave-api-aqui",
             "type": "apiKey",
             "name": "X-API-Key",
             "in": "header"
@@ -1153,11 +1281,11 @@ var SwaggerInfo = &swag.Spec{
 	BasePath:         "/",
 	Schemes:          []string{"http", "https"},
 	Title:            "WazMeow API",
-	Description:      "Autenticação básica HTTP. Configure AUTH_TYPE=basic no .env para habilitar.",
+	Description:      "Autenticação básica HTTP (username:password). Configure AUTH_ENABLED=true e AUTH_TYPE=basic no .env. Exemplo: Authorization: Basic dXNlcjpwYXNz",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
-	
-	
+	LeftDelim:        "{{",
+	RightDelim:       "}}",
 }
 
 func init() {

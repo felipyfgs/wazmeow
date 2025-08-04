@@ -1,32 +1,113 @@
 package dto
 
 import (
+	"fmt"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"wazmeow/internal/domain/session"
 )
 
+// ProxyType represents the type of proxy
+// @Description Tipo de proxy suportado
+// @Enum http socks5
+type ProxyType string
+
+const (
+	// ProxyTypeHTTP represents HTTP proxy
+	ProxyTypeHTTP ProxyType = "http"
+	// ProxyTypeSOCKS5 represents SOCKS5 proxy
+	ProxyTypeSOCKS5 ProxyType = "socks5"
+)
+
+// String returns the string representation of ProxyType
+func (pt ProxyType) String() string {
+	return string(pt)
+}
+
+// IsValid returns true if the proxy type is valid
+func (pt ProxyType) IsValid() bool {
+	return pt == ProxyTypeHTTP || pt == ProxyTypeSOCKS5
+}
+
 // CreateSessionRequest represents the HTTP request to create a session
 // @Description Dados para criação de uma nova sessão WhatsApp
 type CreateSessionRequest struct {
-	Name      string `json:"name" validate:"required,session_name" example:"minha-sessao" description:"Nome único da sessão (apenas letras, números, hífens e underscores)"`
-	ProxyHost string `json:"proxy_host,omitempty" example:"78.24.204.134" description:"IP ou hostname do proxy (opcional)"`
-	ProxyPort int    `json:"proxy_port,omitempty" example:"62122" description:"Porta do proxy (opcional)"`
-	ProxyType string `json:"proxy_type,omitempty" example:"http" description:"Tipo do proxy: http ou socks5 (opcional)"`
-	Username  string `json:"username,omitempty" example:"sgQ4BJZs" description:"Usuário do proxy (opcional)"`
-	Password  string `json:"password,omitempty" example:"YGFEu7Wx" description:"Senha do proxy (opcional)"`
+	Name      string    `json:"name" validate:"required,session_name" example:"minha-sessao" description:"Nome único da sessão (3-50 caracteres, apenas letras, números, hífens e underscores)"`
+	ProxyHost string    `json:"proxy_host,omitempty" validate:"omitempty,ip|hostname" example:"78.24.204.134" description:"IP ou hostname do proxy (opcional, requerido se proxy_port for especificado)"`
+	ProxyPort int       `json:"proxy_port,omitempty" validate:"omitempty,min=1,max=65535" example:"62122" description:"Porta do proxy (opcional, 1-65535, requerido se proxy_host for especificado)"`
+	ProxyType ProxyType `json:"proxy_type,omitempty" validate:"omitempty,oneof=http socks5" example:"http" description:"Tipo do proxy (opcional, padrão: http se proxy configurado)"`
+	Username  string    `json:"username,omitempty" validate:"omitempty,min=1,max=255" example:"sgQ4BJZs" description:"Usuário para autenticação do proxy (opcional)"`
+	Password  string    `json:"password,omitempty" validate:"omitempty,min=1,max=255" example:"YGFEu7Wx" description:"Senha para autenticação do proxy (opcional, requerido se username for especificado)"`
+}
+
+// HasProxy returns true if proxy configuration is provided
+func (req *CreateSessionRequest) HasProxy() bool {
+	return req.ProxyHost != "" && req.ProxyPort > 0
+}
+
+// HasProxyAuth returns true if proxy authentication is provided
+func (req *CreateSessionRequest) HasProxyAuth() bool {
+	return req.Username != "" && req.Password != ""
+}
+
+// BuildProxyURL builds a proxy URL from the request data
+func (req *CreateSessionRequest) BuildProxyURL() (string, error) {
+	if !req.HasProxy() {
+		return "", nil
+	}
+
+	if !req.ProxyType.IsValid() {
+		return "", fmt.Errorf("invalid proxy type: %s", req.ProxyType)
+	}
+
+	var userInfo *url.Userinfo
+	if req.HasProxyAuth() {
+		userInfo = url.UserPassword(req.Username, req.Password)
+	}
+
+	proxyURL := &url.URL{
+		Scheme: req.ProxyType.String(),
+		User:   userInfo,
+		Host:   fmt.Sprintf("%s:%d", req.ProxyHost, req.ProxyPort),
+	}
+
+	return proxyURL.String(), nil
+}
+
+// Normalize normalizes the request data
+func (req *CreateSessionRequest) Normalize() {
+	req.Name = strings.TrimSpace(req.Name)
+	req.ProxyHost = strings.TrimSpace(req.ProxyHost)
+	req.Username = strings.TrimSpace(req.Username)
+
+	// Set default proxy type if proxy is configured but type is not specified
+	if req.HasProxy() && req.ProxyType == "" {
+		req.ProxyType = ProxyTypeHTTP
+	}
 }
 
 // ProxyConfigResponse represents the proxy configuration in responses
 // @Description Configuração do proxy
 type ProxyConfigResponse struct {
-	Host     string `json:"host,omitempty" example:"78.24.204.134" description:"IP ou hostname do proxy"`
-	Port     int    `json:"port,omitempty" example:"62122" description:"Porta do proxy"`
-	Type     string `json:"type,omitempty" example:"http" description:"Tipo do proxy: http ou socks5"`
-	Username string `json:"username,omitempty" example:"sgQ4BJZs" description:"Usuário do proxy"`
-	Password string `json:"password,omitempty" example:"YGFEu7Wx" description:"Senha do proxy"`
+	Host     string    `json:"host,omitempty" example:"78.24.204.134" description:"IP ou hostname do proxy"`
+	Port     int       `json:"port,omitempty" example:"62122" description:"Porta do proxy"`
+	Type     ProxyType `json:"type,omitempty" example:"http" description:"Tipo do proxy: http ou socks5"`
+	Username string    `json:"username,omitempty" example:"sgQ4BJZs" description:"Usuário do proxy"`
+	Password string    `json:"password,omitempty" example:"YGFEu7Wx" description:"Senha do proxy"`
+}
+
+// NewProxyConfigResponse creates a new proxy config response
+func NewProxyConfigResponse(host string, port int, proxyType ProxyType, username, password string) *ProxyConfigResponse {
+	return &ProxyConfigResponse{
+		Host:     host,
+		Port:     port,
+		Type:     proxyType,
+		Username: username,
+		Password: password,
+	}
 }
 
 // SessionResponse represents the HTTP response for a session
@@ -111,11 +192,32 @@ type PairPhoneResponse struct {
 // ProxySetRequest represents the HTTP request to set proxy configuration
 // @Description Configuração de proxy para a sessão
 type ProxySetRequest struct {
-	ProxyHost string `json:"proxy_host" validate:"required" example:"78.24.204.134" description:"IP ou hostname do proxy"`
-	ProxyPort int    `json:"proxy_port" validate:"required,min=1,max=65535" example:"62122" description:"Porta do proxy"`
-	ProxyType string `json:"proxy_type" validate:"required,oneof=http socks5" example:"http" description:"Tipo do proxy: http ou socks5"`
-	Username  string `json:"username,omitempty" example:"sgQ4BJZs" description:"Usuário do proxy (opcional)"`
-	Password  string `json:"password,omitempty" example:"YGFEu7Wx" description:"Senha do proxy (opcional)"`
+	ProxyHost string    `json:"proxy_host" validate:"required" example:"78.24.204.134" description:"IP ou hostname do proxy"`
+	ProxyPort int       `json:"proxy_port" validate:"required,min=1,max=65535" example:"62122" description:"Porta do proxy"`
+	ProxyType ProxyType `json:"proxy_type" validate:"required,oneof=http socks5" example:"http" description:"Tipo do proxy: http ou socks5"`
+	Username  string    `json:"username,omitempty" example:"sgQ4BJZs" description:"Usuário do proxy (opcional)"`
+	Password  string    `json:"password,omitempty" example:"YGFEu7Wx" description:"Senha do proxy (opcional)"`
+}
+
+// HasProxy returns true if proxy configuration is provided
+func (req *ProxySetRequest) HasProxy() bool {
+	return req.ProxyHost != "" && req.ProxyPort > 0
+}
+
+// HasProxyAuth returns true if proxy authentication is provided
+func (req *ProxySetRequest) HasProxyAuth() bool {
+	return req.Username != "" && req.Password != ""
+}
+
+// Normalize normalizes the request data
+func (req *ProxySetRequest) Normalize() {
+	req.ProxyHost = strings.TrimSpace(req.ProxyHost)
+	req.Username = strings.TrimSpace(req.Username)
+
+	// Set default proxy type if not specified
+	if req.HasProxy() && req.ProxyType == "" {
+		req.ProxyType = ProxyTypeHTTP
+	}
 }
 
 // ProxySetResponse represents the HTTP response for proxy configuration
@@ -127,43 +229,14 @@ type ProxySetResponse struct {
 	Message   string `json:"message" example:"Proxy configurado com sucesso" description:"Mensagem informativa"`
 }
 
-// ToSessionResponse converts a domain session to HTTP response
+// ToSessionResponse converts a domain session to HTTP response using optimized converter
 func ToSessionResponse(sess *session.Session) *SessionResponse {
-	var proxyConfig *ProxyConfigResponse
-	if sess.HasProxy() {
-		proxyConfig = &ProxyConfigResponse{
-			Host: sess.GetProxyHost(),
-			Port: parseProxyPort(sess.GetProxyPort()),
-			Type: sess.GetProxyType(),
-		}
-
-		// Extract username/password from URL if present
-		if sess.HasProxyAuth() {
-			username, password := extractProxyAuth(sess.ProxyURL())
-			proxyConfig.Username = username
-			proxyConfig.Password = password
-		}
-	}
-
-	return &SessionResponse{
-		ID:          sess.ID().String(),
-		Name:        sess.Name(),
-		Status:      sess.Status().String(),
-		WaJID:       sess.WaJID(),
-		ProxyConfig: proxyConfig,
-		IsActive:    sess.IsActive(),
-		CreatedAt:   sess.CreatedAt(),
-		UpdatedAt:   sess.UpdatedAt(),
-	}
+	return ConvertSession(sess)
 }
 
-// ToSessionListResponse converts a list of domain sessions to HTTP response
+// ToSessionListResponse converts a list of domain sessions to HTTP response using batch converter
 func ToSessionListResponse(sessions []*session.Session, total int) *SessionListResponse {
-	sessionResponses := make([]*SessionResponse, len(sessions))
-	for i, sess := range sessions {
-		sessionResponses[i] = ToSessionResponse(sess)
-	}
-
+	sessionResponses := ConvertSessions(sessions)
 	return &SessionListResponse{
 		Sessions: sessionResponses,
 		Total:    total,
@@ -192,4 +265,71 @@ func extractProxyAuth(proxyURL string) (string, string) {
 	username := parsedURL.User.Username()
 	password, _ := parsedURL.User.Password()
 	return username, password
+}
+
+// Factory Methods for Session DTOs
+
+// CreateSessionResponse creates a session response from domain session
+func CreateSessionResponse(sess *session.Session) *SessionResponse {
+	return ToSessionResponse(sess)
+}
+
+// CreateSessionListResponse creates a session list response
+func CreateSessionListResponse(sessions []*session.Session, total int) *SessionListResponse {
+	return ToSessionListResponse(sessions, total)
+}
+
+// CreateConnectSessionResponse creates a connect session response
+func CreateConnectSessionResponse(sess *session.Session, qrCode string, needsAuth bool, message string) *ConnectSessionResponse {
+	return NewConnectSessionResponseBuilder().
+		WithSession(ToSessionResponse(sess)).
+		WithQRCode(qrCode).
+		WithNeedsAuth(needsAuth).
+		WithMessage(message).
+		Build()
+}
+
+// CreateQRCodeResponse creates a QR code response
+func CreateQRCodeResponse(sessionID, qrCode, message string) *QRCodeResponse {
+	return &QRCodeResponse{
+		SessionID: sessionID,
+		QRCode:    qrCode,
+		Message:   message,
+	}
+}
+
+// CreatePairPhoneResponse creates a pair phone response
+func CreatePairPhoneResponse(sessionID, phoneNumber string, success bool, message string) *PairPhoneResponse {
+	return &PairPhoneResponse{
+		SessionID:   sessionID,
+		PhoneNumber: phoneNumber,
+		Success:     success,
+		Message:     message,
+	}
+}
+
+// CreateProxySetResponse creates a proxy set response
+func CreateProxySetResponse(sessionID, proxyURL string, success bool, message string) *ProxySetResponse {
+	return &ProxySetResponse{
+		SessionID: sessionID,
+		ProxyURL:  proxyURL,
+		Success:   success,
+		Message:   message,
+	}
+}
+
+// CreateDeleteSessionResponse creates a delete session response
+func CreateDeleteSessionResponse(sessionID, message string) *DeleteSessionResponse {
+	return &DeleteSessionResponse{
+		SessionID: sessionID,
+		Message:   message,
+	}
+}
+
+// CreateDisconnectSessionResponse creates a disconnect session response
+func CreateDisconnectSessionResponse(sess *session.Session, message string) *DisconnectSessionResponse {
+	return &DisconnectSessionResponse{
+		Session: ToSessionResponse(sess),
+		Message: message,
+	}
 }

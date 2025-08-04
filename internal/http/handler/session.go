@@ -64,15 +64,21 @@ func NewSessionHandler(
 
 // CreateSession handles POST /sessions/add
 // @Summary Criar nova sessão WhatsApp
-// @Description Cria uma nova sessão WhatsApp com o nome especificado
+// @Description Cria uma nova sessão WhatsApp com configuração opcional de proxy. A sessão é criada no estado 'disconnected' e pode ser conectada posteriormente.
+// @Description
+// @Description **Exemplos de uso:**
+// @Description - Sessão simples: `{"name": "minha-sessao"}`
+// @Description - Sessão com proxy HTTP: `{"name": "sessao-proxy", "proxy_host": "78.24.204.134", "proxy_port": 62122, "proxy_type": "http", "username": "user", "password": "pass"}`
+// @Description - Sessão com proxy SOCKS5: `{"name": "sessao-socks5", "proxy_host": "78.24.204.134", "proxy_port": 62123, "proxy_type": "socks5"}`
 // @Tags Sessions
 // @Accept json
 // @Produce json
 // @Param request body dto.CreateSessionRequest true "Dados da sessão"
 // @Success 201 {object} dto.SuccessResponse{data=dto.SessionResponse} "Sessão criada com sucesso"
-// @Failure 400 {object} dto.ErrorResponse "Dados inválidos"
-// @Failure 409 {object} dto.ErrorResponse "Sessão já existe"
-// @Failure 500 {object} dto.ErrorResponse "Erro interno"
+// @Failure 400 {object} dto.ErrorResponse "Dados inválidos (nome muito curto, proxy inválido, etc.)"
+// @Failure 409 {object} dto.ErrorResponse "Sessão com este nome já existe"
+// @Failure 422 {object} dto.ErrorResponse "Dados válidos mas incompatíveis (ex: username sem password)"
+// @Failure 500 {object} dto.ErrorResponse "Erro interno do servidor"
 // @Security ApiKeyAuth
 // @Router /sessions/add [post]
 func (h *SessionHandler) CreateSession(w http.ResponseWriter, r *http.Request) {
@@ -82,16 +88,13 @@ func (h *SessionHandler) CreateSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Normalize and validate request
+	req.Normalize()
+
 	// Validate proxy parameters if provided
-	if req.ProxyHost != "" {
-		if req.ProxyPort <= 0 || req.ProxyPort > 65535 {
-			h.writeErrorResponse(w, http.StatusBadRequest, "Invalid proxy port", nil)
-			return
-		}
-		if req.ProxyType != "http" && req.ProxyType != "socks5" {
-			h.writeErrorResponse(w, http.StatusBadRequest, "Invalid proxy type. Must be 'http' or 'socks5'", nil)
-			return
-		}
+	if req.HasProxy() && !req.ProxyType.IsValid() {
+		h.writeErrorResponse(w, http.StatusBadRequest, "Invalid proxy type. Must be 'http' or 'socks5'", nil)
+		return
 	}
 
 	// Execute use case
@@ -103,12 +106,12 @@ func (h *SessionHandler) CreateSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Configure proxy if provided
-	if req.ProxyHost != "" {
+	if req.HasProxy() {
 		setProxyReq := sessionUC.SetProxyRequest{
 			SessionID: result.Session.ID(),
 			ProxyHost: req.ProxyHost,
 			ProxyPort: req.ProxyPort,
-			ProxyType: req.ProxyType,
+			ProxyType: req.ProxyType.String(),
 			Username:  req.Username,
 			Password:  req.Password,
 		}
@@ -137,14 +140,22 @@ func (h *SessionHandler) CreateSession(w http.ResponseWriter, r *http.Request) {
 
 // ListSessions handles GET /sessions/list
 // @Summary Listar sessões WhatsApp
-// @Description Lista todas as sessões WhatsApp registradas no sistema
+// @Description Lista todas as sessões WhatsApp registradas no sistema com informações detalhadas incluindo status, configuração de proxy e timestamps.
+// @Description
+// @Description **Filtros disponíveis:**
+// @Description - `status`: Filtra sessões por status (disconnected, connecting, connected)
+// @Description
+// @Description **Resposta inclui:**
+// @Description - Lista de sessões com configuração completa
+// @Description - Total de sessões encontradas
+// @Description - Informações de proxy (se configurado)
 // @Tags Sessions
 // @Accept json
 // @Produce json
-// @Param status query string false "Filtrar por status" Enums(disconnected, connecting, connected)
-// @Success 200 {object} dto.SuccessResponse{data=dto.SessionListResponse} "Lista de sessões"
-// @Failure 400 {object} dto.ErrorResponse "Parâmetros inválidos"
-// @Failure 500 {object} dto.ErrorResponse "Erro interno"
+// @Param status query string false "Filtrar por status da sessão" Enums(disconnected, connecting, connected)
+// @Success 200 {object} dto.SuccessResponse{data=dto.SessionListResponse} "Lista de sessões recuperada com sucesso"
+// @Failure 400 {object} dto.ErrorResponse "Parâmetros de filtro inválidos"
+// @Failure 500 {object} dto.ErrorResponse "Erro interno do servidor"
 // @Security ApiKeyAuth
 // @Router /sessions/list [get]
 func (h *SessionHandler) ListSessions(w http.ResponseWriter, r *http.Request) {
@@ -217,16 +228,25 @@ func (h *SessionHandler) GetSession(w http.ResponseWriter, r *http.Request) {
 
 // ConnectSession handles POST /sessions/{id}/connect
 // @Summary Conectar sessão WhatsApp
-// @Description Conecta uma sessão WhatsApp específica por ID ou nome. Pode gerar QR Code se necessário
+// @Description Inicia o processo de conexão de uma sessão WhatsApp. Se a sessão não estiver autenticada, gera um QR Code para escaneamento.
+// @Description
+// @Description **Fluxo de conexão:**
+// @Description 1. Sessão não autenticada: Retorna QR Code para escaneamento
+// @Description 2. Sessão autenticada: Conecta diretamente ao WhatsApp
+// @Description 3. Sessão já conectada: Retorna erro 409
+// @Description
+// @Description **Identificadores aceitos:**
+// @Description - UUID da sessão: `4ee6195b-6a0f-4c85-a4ee-673ee15f14c8`
+// @Description - Nome da sessão: `minha-sessao`
 // @Tags Sessions
 // @Accept json
 // @Produce json
-// @Param id path string true "ID da sessão (UUID) ou nome da sessão"
-// @Success 200 {object} dto.SuccessResponse{data=dto.ConnectSessionResponse} "Sessão conectada ou QR Code gerado"
-// @Failure 400 {object} dto.ErrorResponse "Identificador da sessão inválido"
-// @Failure 404 {object} dto.ErrorResponse "Sessão não encontrada"
-// @Failure 409 {object} dto.ErrorResponse "Sessão já conectada"
-// @Failure 500 {object} dto.ErrorResponse "Erro interno"
+// @Param id path string true "ID da sessão (UUID) ou nome da sessão" example("minha-sessao")
+// @Success 200 {object} dto.SuccessResponse{data=dto.ConnectSessionResponse} "Processo de conexão iniciado (QR Code gerado ou sessão conectada)"
+// @Failure 400 {object} dto.ErrorResponse "Identificador da sessão inválido ou malformado"
+// @Failure 404 {object} dto.ErrorResponse "Sessão não encontrada com o identificador fornecido"
+// @Failure 409 {object} dto.ErrorResponse "Sessão já está conectada"
+// @Failure 500 {object} dto.ErrorResponse "Erro interno do servidor ou falha na conexão WhatsApp"
 // @Security ApiKeyAuth
 // @Router /sessions/{id}/connect [post]
 func (h *SessionHandler) ConnectSession(w http.ResponseWriter, r *http.Request) {
@@ -534,16 +554,26 @@ func (h *SessionHandler) PairPhone(w http.ResponseWriter, r *http.Request) {
 
 // SetProxy handles POST /sessions/{id}/proxy/set
 // @Summary Configurar proxy para sessão
-// @Description Configura proxy para a sessão WhatsApp por ID ou nome
+// @Description Configura ou atualiza a configuração de proxy para uma sessão existente. O proxy será usado para todas as conexões WhatsApp desta sessão.
+// @Description
+// @Description **Tipos de proxy suportados:**
+// @Description - HTTP: Proxy HTTP/HTTPS padrão
+// @Description - SOCKS5: Proxy SOCKS5 com suporte a autenticação
+// @Description
+// @Description **Exemplos de configuração:**
+// @Description - Proxy HTTP: `{"proxy_host": "78.24.204.134", "proxy_port": 62122, "proxy_type": "http"}`
+// @Description - Proxy com autenticação: `{"proxy_host": "78.24.204.134", "proxy_port": 62122, "proxy_type": "http", "username": "user", "password": "pass"}`
+// @Description - Proxy SOCKS5: `{"proxy_host": "78.24.204.134", "proxy_port": 62123, "proxy_type": "socks5", "username": "user", "password": "pass"}`
 // @Tags Sessions
 // @Accept json
 // @Produce json
-// @Param id path string true "ID da sessão (UUID) ou nome da sessão"
+// @Param id path string true "ID da sessão (UUID) ou nome da sessão" example("minha-sessao")
 // @Param request body dto.ProxySetRequest true "Configuração do proxy"
-// @Success 200 {object} dto.SuccessResponse{data=dto.ProxySetResponse} "Proxy configurado"
-// @Failure 400 {object} dto.ErrorResponse "Dados inválidos"
+// @Success 200 {object} dto.SuccessResponse{data=dto.ProxySetResponse} "Proxy configurado com sucesso"
+// @Failure 400 {object} dto.ErrorResponse "Dados de proxy inválidos (host, porta, tipo, etc.)"
 // @Failure 404 {object} dto.ErrorResponse "Sessão não encontrada"
-// @Failure 500 {object} dto.ErrorResponse "Erro interno"
+// @Failure 422 {object} dto.ErrorResponse "Configuração de proxy inválida (ex: username sem password)"
+// @Failure 500 {object} dto.ErrorResponse "Erro interno do servidor"
 // @Security ApiKeyAuth
 // @Router /sessions/{id}/proxy/set [post]
 func (h *SessionHandler) SetProxy(w http.ResponseWriter, r *http.Request) {
@@ -588,12 +618,15 @@ func (h *SessionHandler) SetProxy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Normalize request
+	req.Normalize()
+
 	// Se ProxyHost tem valor, configura o proxy usando o use case
 	setProxyReq := sessionUC.SetProxyRequest{
 		SessionID: sess.ID(),
 		ProxyHost: req.ProxyHost,
 		ProxyPort: req.ProxyPort,
-		ProxyType: req.ProxyType,
+		ProxyType: req.ProxyType.String(),
 		Username:  req.Username,
 		Password:  req.Password,
 	}

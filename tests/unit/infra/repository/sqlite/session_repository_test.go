@@ -27,7 +27,7 @@ func setupTestDB(t *testing.T) *bun.DB {
 	// Create bun DB instance
 	db := bun.NewDB(sqldb, sqlitedialect.New())
 
-	// Create sessions table
+	// Create sessions table with proxy_config column
 	createTableSQL := `
 	CREATE TABLE wazmeow_sessions (
 		id TEXT PRIMARY KEY,
@@ -35,7 +35,7 @@ func setupTestDB(t *testing.T) *bun.DB {
 		status TEXT NOT NULL,
 		wa_jid TEXT,
 		qr_code TEXT,
-		proxy_url TEXT,
+		proxy_config TEXT,
 		is_active BOOLEAN NOT NULL DEFAULT FALSE,
 		created_at DATETIME NOT NULL,
 		updated_at DATETIME NOT NULL

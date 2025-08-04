@@ -38,6 +38,11 @@ CRUSH.md
 
 # Build artifacts
 bin/
+server
+wazmeow
+
+# Test data
+tests/unit/data/
 
 # Log files
 logs/

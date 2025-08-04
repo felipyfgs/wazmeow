@@ -2,7 +2,7 @@ basePath: /
 consumes:
 - application/json
 definitions:
-  dto.ConnectSessionResponse:
+  wazmeow_internal_http_dto.ConnectSessionResponse:
     description: Resposta da operação de conexão de sessão
     properties:
       message:
@@ -15,49 +15,82 @@ definitions:
         example: data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...
         type: string
       session:
-        $ref: '#/definitions/dto.SessionResponse'
+        $ref: '#/definitions/wazmeow_internal_http_dto.SessionResponse'
     type: object
-  dto.CreateSessionRequest:
+  wazmeow_internal_http_dto.CreateSessionRequest:
     description: Dados para criação de uma nova sessão WhatsApp
     properties:
       name:
         example: minha-sessao
         type: string
+      password:
+        example: YGFEu7Wx
+        maxLength: 255
+        minLength: 1
+        type: string
+      proxy_host:
+        example: 78.24.204.134
+        type: string
+      proxy_port:
+        example: 62122
+        maximum: 65535
+        minimum: 1
+        type: integer
+      proxy_type:
+        allOf:
+        - $ref: '#/definitions/wazmeow_internal_http_dto.ProxyType'
+        enum:
+        - http
+        - socks5
+        example: http
+      username:
+        example: sgQ4BJZs
+        maxLength: 255
+        minLength: 1
+        type: string
     required:
     - name
     type: object
-  dto.DeleteSessionResponse:
+  wazmeow_internal_http_dto.DeleteSessionResponse:
     properties:
       message:
         type: string
       session_id:
         type: string
     type: object
-  dto.DisconnectSessionResponse:
+  wazmeow_internal_http_dto.DisconnectSessionResponse:
     properties:
       message:
         type: string
       session:
-        $ref: '#/definitions/dto.SessionResponse'
+        $ref: '#/definitions/wazmeow_internal_http_dto.SessionResponse'
     type: object
-  dto.ErrorResponse:
+  wazmeow_internal_http_dto.ErrorResponse:
     description: Resposta de erro padrão da API
     properties:
       code:
         example: INTERNAL_ERROR
         type: string
-      context: {}
+      context:
+        additionalProperties: {}
+        type: object
       details:
         example: Detalhes técnicos do erro
         type: string
       error:
         example: Erro interno do servidor
         type: string
+      status:
+        example: error
+        type: string
       success:
         example: false
         type: boolean
+      timestamp:
+        example: "2024-01-01T12:00:00Z"
+        type: string
     type: object
-  dto.HealthResponse:
+  wazmeow_internal_http_dto.HealthResponse:
     description: Resposta do health check da aplicação
     properties:
       services:
@@ -76,20 +109,20 @@ definitions:
         example: 1.0.0
         type: string
     type: object
-  dto.MetricsResponse:
+  wazmeow_internal_http_dto.MetricsResponse:
     description: Métricas completas da aplicação
     properties:
       sessions:
-        $ref: '#/definitions/dto.SessionMetrics'
+        $ref: '#/definitions/wazmeow_internal_http_dto.SessionMetrics'
       system:
-        $ref: '#/definitions/dto.SystemMetrics'
+        $ref: '#/definitions/wazmeow_internal_http_dto.SystemMetrics'
       timestamp:
         example: "2024-01-01T12:00:00Z"
         type: string
       whatsapp:
-        $ref: '#/definitions/dto.WhatsAppMetrics'
+        $ref: '#/definitions/wazmeow_internal_http_dto.WhatsAppMetrics'
     type: object
-  dto.PairPhoneRequest:
+  wazmeow_internal_http_dto.PairPhoneRequest:
     description: Dados para emparelhamento com número de telefone
     properties:
       phone_number:
@@ -98,7 +131,7 @@ definitions:
     required:
     - phone_number
     type: object
-  dto.PairPhoneResponse:
+  wazmeow_internal_http_dto.PairPhoneResponse:
     description: Resposta do emparelhamento com telefone
     properties:
       message:
@@ -114,22 +147,56 @@ definitions:
         example: true
         type: boolean
     type: object
-  dto.ProxySetRequest:
+  wazmeow_internal_http_dto.ProxyConfigResponse:
+    description: Configuração do proxy
+    properties:
+      host:
+        example: 78.24.204.134
+        type: string
+      password:
+        example: YGFEu7Wx
+        type: string
+      port:
+        example: 62122
+        type: integer
+      type:
+        allOf:
+        - $ref: '#/definitions/wazmeow_internal_http_dto.ProxyType'
+        example: http
+      username:
+        example: sgQ4BJZs
+        type: string
+    type: object
+  wazmeow_internal_http_dto.ProxySetRequest:
     description: Configuração de proxy para a sessão
     properties:
       password:
-        example: pass
+        example: YGFEu7Wx
         type: string
-      proxy_url:
-        example: http://proxy.example.com:8080
+      proxy_host:
+        example: 78.24.204.134
         type: string
+      proxy_port:
+        example: 62122
+        maximum: 65535
+        minimum: 1
+        type: integer
+      proxy_type:
+        allOf:
+        - $ref: '#/definitions/wazmeow_internal_http_dto.ProxyType'
+        enum:
+        - http
+        - socks5
+        example: http
       username:
-        example: user
+        example: sgQ4BJZs
         type: string
     required:
-    - proxy_url
+    - proxy_host
+    - proxy_port
+    - proxy_type
     type: object
-  dto.ProxySetResponse:
+  wazmeow_internal_http_dto.ProxySetResponse:
     description: Resposta da configuração de proxy
     properties:
       message:
@@ -145,7 +212,16 @@ definitions:
         example: true
         type: boolean
     type: object
-  dto.QRCodeResponse:
+  wazmeow_internal_http_dto.ProxyType:
+    description: Tipo de proxy suportado
+    enum:
+    - http
+    - socks5
+    type: string
+    x-enum-varnames:
+    - ProxyTypeHTTP
+    - ProxyTypeSOCKS5
+  wazmeow_internal_http_dto.QRCodeResponse:
     description: Resposta com QR Code para autenticação
     properties:
       message:
@@ -158,18 +234,18 @@ definitions:
         example: 550e8400-e29b-41d4-a716-446655440000
         type: string
     type: object
-  dto.SessionListResponse:
+  wazmeow_internal_http_dto.SessionListResponse:
     description: Lista de sessões WhatsApp
     properties:
       sessions:
         items:
-          $ref: '#/definitions/dto.SessionResponse'
+          $ref: '#/definitions/wazmeow_internal_http_dto.SessionResponse'
         type: array
       total:
         example: 5
         type: integer
     type: object
-  dto.SessionMetrics:
+  wazmeow_internal_http_dto.SessionMetrics:
     description: Métricas relacionadas às sessões WhatsApp
     properties:
       active:
@@ -188,7 +264,7 @@ definitions:
         example: 10
         type: integer
     type: object
-  dto.SessionResponse:
+  wazmeow_internal_http_dto.SessionResponse:
     description: Dados de uma sessão WhatsApp
     properties:
       created_at:
@@ -203,6 +279,8 @@ definitions:
       name:
         example: minha-sessao
         type: string
+      proxy_config:
+        $ref: '#/definitions/wazmeow_internal_http_dto.ProxyConfigResponse'
       status:
         enum:
         - disconnected
@@ -217,18 +295,21 @@ definitions:
         example: 5511999999999@s.whatsapp.net
         type: string
     type: object
-  dto.SuccessResponse:
+  wazmeow_internal_http_dto.SuccessResponse:
     description: Resposta de sucesso padrão da API
     properties:
       data: {}
       message:
         example: Operação realizada com sucesso
         type: string
+      status:
+        example: success
+        type: string
       success:
         example: true
         type: boolean
     type: object
-  dto.SystemMetrics:
+  wazmeow_internal_http_dto.SystemMetrics:
     description: Métricas relacionadas ao sistema
     properties:
       cpu_usage:
@@ -247,7 +328,7 @@ definitions:
         example: 2h30m45s
         type: string
     type: object
-  dto.WhatsAppMetrics:
+  wazmeow_internal_http_dto.WhatsAppMetrics:
     description: Métricas relacionadas ao WhatsApp
     properties:
       authenticated_clients:
@@ -275,7 +356,8 @@ info:
     email: support@wazmeow.com
     name: WazMeow API Support
     url: https://github.com/wazmeow/wazmeow
-  description: Autenticação básica HTTP. Configure AUTH_TYPE=basic no .env para habilitar.
+  description: 'Autenticação básica HTTP (username:password). Configure AUTH_ENABLED=true
+    e AUTH_TYPE=basic no .env. Exemplo: Authorization: Basic dXNlcjpwYXNz'
   license:
     name: MIT
     url: https://opensource.org/licenses/MIT
@@ -287,23 +369,36 @@ paths:
     get:
       consumes:
       - application/json
-      description: Verifica o status de saúde da aplicação e seus serviços dependentes
+      description: |-
+        Verifica o status de saúde da aplicação e todos os seus serviços dependentes (banco de dados, WhatsApp, etc.).
+
+        **Informações retornadas:**
+        - Status geral da aplicação (healthy/unhealthy)
+        - Versão da aplicação
+        - Tempo de atividade (uptime)
+        - Status individual de cada serviço
+        - Timestamp da verificação
+
+        **Status possíveis:**
+        - `healthy`: Todos os serviços funcionando normalmente
+        - `unhealthy`: Um ou mais serviços com problemas
+        - `degraded`: Serviços funcionando com limitações
       produces:
       - application/json
       responses:
         "200":
-          description: Aplicação saudável
+          description: Aplicação e serviços saudáveis
           schema:
             allOf:
-            - $ref: '#/definitions/dto.SuccessResponse'
+            - $ref: '#/definitions/wazmeow_internal_http_dto.SuccessResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/dto.HealthResponse'
+                  $ref: '#/definitions/wazmeow_internal_http_dto.HealthResponse'
               type: object
         "503":
-          description: Serviços indisponíveis
+          description: Um ou mais serviços indisponíveis
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/wazmeow_internal_http_dto.ErrorResponse'
       summary: Health Check da aplicação
       tags:
       - Health
@@ -311,24 +406,45 @@ paths:
     get:
       consumes:
       - application/json
-      description: Retorna métricas detalhadas da aplicação incluindo sessões, WhatsApp
-        e sistema
+      description: |-
+        Retorna métricas detalhadas e estatísticas de performance da aplicação, incluindo informações sobre sessões, WhatsApp e sistema.
+
+        **Métricas incluídas:**
+
+        **Sessões:**
+        - Total de sessões criadas
+        - Sessões conectadas/desconectadas
+        - Sessões com erro
+        - Sessões ativas
+
+        **WhatsApp:**
+        - Total de clientes WhatsApp
+        - Clientes conectados e autenticados
+        - Mensagens enviadas e recebidas
+        - Clientes com erro
+
+        **Sistema:**
+        - Tempo de atividade (uptime)
+        - Uso de memória
+        - Uso de CPU
+        - Status do banco de dados
+        - Conexões ativas do banco
       produces:
       - application/json
       responses:
         "200":
-          description: Métricas da aplicação
+          description: Métricas coletadas com sucesso
           schema:
             allOf:
-            - $ref: '#/definitions/dto.SuccessResponse'
+            - $ref: '#/definitions/wazmeow_internal_http_dto.SuccessResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/dto.MetricsResponse'
+                  $ref: '#/definitions/wazmeow_internal_http_dto.MetricsResponse'
               type: object
         "500":
-          description: Erro interno
+          description: Erro interno ao coletar métricas
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/wazmeow_internal_http_dto.ErrorResponse'
       summary: Métricas da aplicação
       tags:
       - Health
@@ -349,23 +465,23 @@ paths:
           description: Sessão deletada
           schema:
             allOf:
-            - $ref: '#/definitions/dto.SuccessResponse'
+            - $ref: '#/definitions/wazmeow_internal_http_dto.SuccessResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/dto.DeleteSessionResponse'
+                  $ref: '#/definitions/wazmeow_internal_http_dto.DeleteSessionResponse'
               type: object
         "400":
           description: Identificador da sessão inválido
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/wazmeow_internal_http_dto.ErrorResponse'
         "404":
           description: Sessão não encontrada
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/wazmeow_internal_http_dto.ErrorResponse'
         "500":
           description: Erro interno
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/wazmeow_internal_http_dto.ErrorResponse'
       security:
       - ApiKeyAuth: []
       summary: Deletar sessão WhatsApp
@@ -375,10 +491,20 @@ paths:
     post:
       consumes:
       - application/json
-      description: Conecta uma sessão WhatsApp específica por ID ou nome. Pode gerar
-        QR Code se necessário
+      description: |-
+        Inicia o processo de conexão de uma sessão WhatsApp. Se a sessão não estiver autenticada, gera um QR Code para escaneamento.
+
+        **Fluxo de conexão:**
+        1. Sessão não autenticada: Retorna QR Code para escaneamento
+        2. Sessão autenticada: Conecta diretamente ao WhatsApp
+        3. Sessão já conectada: Retorna erro 409
+
+        **Identificadores aceitos:**
+        - UUID da sessão: `4ee6195b-6a0f-4c85-a4ee-673ee15f14c8`
+        - Nome da sessão: `minha-sessao`
       parameters:
       - description: ID da sessão (UUID) ou nome da sessão
+        example: '"minha-sessao"'
         in: path
         name: id
         required: true
@@ -387,30 +513,30 @@ paths:
       - application/json
       responses:
         "200":
-          description: Sessão conectada ou QR Code gerado
+          description: Processo de conexão iniciado (QR Code gerado ou sessão conectada)
           schema:
             allOf:
-            - $ref: '#/definitions/dto.SuccessResponse'
+            - $ref: '#/definitions/wazmeow_internal_http_dto.SuccessResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/dto.ConnectSessionResponse'
+                  $ref: '#/definitions/wazmeow_internal_http_dto.ConnectSessionResponse'
               type: object
         "400":
-          description: Identificador da sessão inválido
+          description: Identificador da sessão inválido ou malformado
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/wazmeow_internal_http_dto.ErrorResponse'
         "404":
-          description: Sessão não encontrada
+          description: Sessão não encontrada com o identificador fornecido
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/wazmeow_internal_http_dto.ErrorResponse'
         "409":
-          description: Sessão já conectada
+          description: Sessão já está conectada
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/wazmeow_internal_http_dto.ErrorResponse'
         "500":
-          description: Erro interno
+          description: Erro interno do servidor ou falha na conexão WhatsApp
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/wazmeow_internal_http_dto.ErrorResponse'
       security:
       - ApiKeyAuth: []
       summary: Conectar sessão WhatsApp
@@ -435,23 +561,23 @@ paths:
           description: Detalhes da sessão
           schema:
             allOf:
-            - $ref: '#/definitions/dto.SuccessResponse'
+            - $ref: '#/definitions/wazmeow_internal_http_dto.SuccessResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/dto.SessionResponse'
+                  $ref: '#/definitions/wazmeow_internal_http_dto.SessionResponse'
               type: object
         "400":
           description: Identificador da sessão inválido
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/wazmeow_internal_http_dto.ErrorResponse'
         "404":
           description: Sessão não encontrada
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/wazmeow_internal_http_dto.ErrorResponse'
         "500":
           description: Erro interno
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/wazmeow_internal_http_dto.ErrorResponse'
       security:
       - ApiKeyAuth: []
       summary: Obter detalhes da sessão
@@ -475,27 +601,27 @@ paths:
           description: Sessão desconectada
           schema:
             allOf:
-            - $ref: '#/definitions/dto.SuccessResponse'
+            - $ref: '#/definitions/wazmeow_internal_http_dto.SuccessResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/dto.DisconnectSessionResponse'
+                  $ref: '#/definitions/wazmeow_internal_http_dto.DisconnectSessionResponse'
               type: object
         "400":
           description: ID da sessão inválido
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/wazmeow_internal_http_dto.ErrorResponse'
         "404":
           description: Sessão não encontrada
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/wazmeow_internal_http_dto.ErrorResponse'
         "409":
           description: Sessão já desconectada
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/wazmeow_internal_http_dto.ErrorResponse'
         "500":
           description: Erro interno
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/wazmeow_internal_http_dto.ErrorResponse'
       security:
       - ApiKeyAuth: []
       summary: Desconectar sessão (logout)
@@ -517,7 +643,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/dto.PairPhoneRequest'
+          $ref: '#/definitions/wazmeow_internal_http_dto.PairPhoneRequest'
       produces:
       - application/json
       responses:
@@ -525,23 +651,23 @@ paths:
           description: Telefone emparelhado
           schema:
             allOf:
-            - $ref: '#/definitions/dto.SuccessResponse'
+            - $ref: '#/definitions/wazmeow_internal_http_dto.SuccessResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/dto.PairPhoneResponse'
+                  $ref: '#/definitions/wazmeow_internal_http_dto.PairPhoneResponse'
               type: object
         "400":
           description: Dados inválidos
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/wazmeow_internal_http_dto.ErrorResponse'
         "404":
           description: Sessão não encontrada
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/wazmeow_internal_http_dto.ErrorResponse'
         "500":
           description: Erro interno
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/wazmeow_internal_http_dto.ErrorResponse'
       security:
       - ApiKeyAuth: []
       summary: Emparelhar telefone com sessão
@@ -551,9 +677,20 @@ paths:
     post:
       consumes:
       - application/json
-      description: Configura proxy para a sessão WhatsApp por ID ou nome
+      description: |-
+        Configura ou atualiza a configuração de proxy para uma sessão existente. O proxy será usado para todas as conexões WhatsApp desta sessão.
+
+        **Tipos de proxy suportados:**
+        - HTTP: Proxy HTTP/HTTPS padrão
+        - SOCKS5: Proxy SOCKS5 com suporte a autenticação
+
+        **Exemplos de configuração:**
+        - Proxy HTTP: `{"proxy_host": "78.24.204.134", "proxy_port": 62122, "proxy_type": "http"}`
+        - Proxy com autenticação: `{"proxy_host": "78.24.204.134", "proxy_port": 62122, "proxy_type": "http", "username": "user", "password": "pass"}`
+        - Proxy SOCKS5: `{"proxy_host": "78.24.204.134", "proxy_port": 62123, "proxy_type": "socks5", "username": "user", "password": "pass"}`
       parameters:
       - description: ID da sessão (UUID) ou nome da sessão
+        example: '"minha-sessao"'
         in: path
         name: id
         required: true
@@ -563,31 +700,35 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/dto.ProxySetRequest'
+          $ref: '#/definitions/wazmeow_internal_http_dto.ProxySetRequest'
       produces:
       - application/json
       responses:
         "200":
-          description: Proxy configurado
+          description: Proxy configurado com sucesso
           schema:
             allOf:
-            - $ref: '#/definitions/dto.SuccessResponse'
+            - $ref: '#/definitions/wazmeow_internal_http_dto.SuccessResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/dto.ProxySetResponse'
+                  $ref: '#/definitions/wazmeow_internal_http_dto.ProxySetResponse'
               type: object
         "400":
-          description: Dados inválidos
+          description: Dados de proxy inválidos (host, porta, tipo, etc.)
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/wazmeow_internal_http_dto.ErrorResponse'
         "404":
           description: Sessão não encontrada
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
-        "500":
-          description: Erro interno
+            $ref: '#/definitions/wazmeow_internal_http_dto.ErrorResponse'
+        "422":
+          description: 'Configuração de proxy inválida (ex: username sem password)'
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/wazmeow_internal_http_dto.ErrorResponse'
+        "500":
+          description: Erro interno do servidor
+          schema:
+            $ref: '#/definitions/wazmeow_internal_http_dto.ErrorResponse'
       security:
       - ApiKeyAuth: []
       summary: Configurar proxy para sessão
@@ -612,27 +753,27 @@ paths:
           description: QR Code gerado
           schema:
             allOf:
-            - $ref: '#/definitions/dto.SuccessResponse'
+            - $ref: '#/definitions/wazmeow_internal_http_dto.SuccessResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/dto.QRCodeResponse'
+                  $ref: '#/definitions/wazmeow_internal_http_dto.QRCodeResponse'
               type: object
         "400":
           description: Identificador da sessão inválido
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/wazmeow_internal_http_dto.ErrorResponse'
         "404":
           description: Sessão não encontrada
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/wazmeow_internal_http_dto.ErrorResponse'
         "409":
           description: Sessão já autenticada
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/wazmeow_internal_http_dto.ErrorResponse'
         "500":
           description: Erro interno
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/wazmeow_internal_http_dto.ErrorResponse'
       security:
       - ApiKeyAuth: []
       summary: Gerar QR Code para autenticação
@@ -642,14 +783,20 @@ paths:
     post:
       consumes:
       - application/json
-      description: Cria uma nova sessão WhatsApp com o nome especificado
+      description: |-
+        Cria uma nova sessão WhatsApp com configuração opcional de proxy. A sessão é criada no estado 'disconnected' e pode ser conectada posteriormente.
+
+        **Exemplos de uso:**
+        - Sessão simples: `{"name": "minha-sessao"}`
+        - Sessão com proxy HTTP: `{"name": "sessao-proxy", "proxy_host": "78.24.204.134", "proxy_port": 62122, "proxy_type": "http", "username": "user", "password": "pass"}`
+        - Sessão com proxy SOCKS5: `{"name": "sessao-socks5", "proxy_host": "78.24.204.134", "proxy_port": 62123, "proxy_type": "socks5"}`
       parameters:
       - description: Dados da sessão
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/dto.CreateSessionRequest'
+          $ref: '#/definitions/wazmeow_internal_http_dto.CreateSessionRequest'
       produces:
       - application/json
       responses:
@@ -657,23 +804,27 @@ paths:
           description: Sessão criada com sucesso
           schema:
             allOf:
-            - $ref: '#/definitions/dto.SuccessResponse'
+            - $ref: '#/definitions/wazmeow_internal_http_dto.SuccessResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/dto.SessionResponse'
+                  $ref: '#/definitions/wazmeow_internal_http_dto.SessionResponse'
               type: object
         "400":
-          description: Dados inválidos
+          description: Dados inválidos (nome muito curto, proxy inválido, etc.)
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/wazmeow_internal_http_dto.ErrorResponse'
         "409":
-          description: Sessão já existe
+          description: Sessão com este nome já existe
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/wazmeow_internal_http_dto.ErrorResponse'
+        "422":
+          description: 'Dados válidos mas incompatíveis (ex: username sem password)'
+          schema:
+            $ref: '#/definitions/wazmeow_internal_http_dto.ErrorResponse'
         "500":
-          description: Erro interno
+          description: Erro interno do servidor
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/wazmeow_internal_http_dto.ErrorResponse'
       security:
       - ApiKeyAuth: []
       summary: Criar nova sessão WhatsApp
@@ -683,9 +834,18 @@ paths:
     get:
       consumes:
       - application/json
-      description: Lista todas as sessões WhatsApp registradas no sistema
+      description: |-
+        Lista todas as sessões WhatsApp registradas no sistema com informações detalhadas incluindo status, configuração de proxy e timestamps.
+
+        **Filtros disponíveis:**
+        - `status`: Filtra sessões por status (disconnected, connecting, connected)
+
+        **Resposta inclui:**
+        - Lista de sessões com configuração completa
+        - Total de sessões encontradas
+        - Informações de proxy (se configurado)
       parameters:
-      - description: Filtrar por status
+      - description: Filtrar por status da sessão
         enum:
         - disconnected
         - connecting
@@ -697,22 +857,22 @@ paths:
       - application/json
       responses:
         "200":
-          description: Lista de sessões
+          description: Lista de sessões recuperada com sucesso
           schema:
             allOf:
-            - $ref: '#/definitions/dto.SuccessResponse'
+            - $ref: '#/definitions/wazmeow_internal_http_dto.SuccessResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/dto.SessionListResponse'
+                  $ref: '#/definitions/wazmeow_internal_http_dto.SessionListResponse'
               type: object
         "400":
-          description: Parâmetros inválidos
+          description: Parâmetros de filtro inválidos
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/wazmeow_internal_http_dto.ErrorResponse'
         "500":
-          description: Erro interno
+          description: Erro interno do servidor
           schema:
-            $ref: '#/definitions/dto.ErrorResponse'
+            $ref: '#/definitions/wazmeow_internal_http_dto.ErrorResponse'
       security:
       - ApiKeyAuth: []
       summary: Listar sessões WhatsApp
@@ -725,8 +885,8 @@ schemes:
 - https
 securityDefinitions:
   ApiKeyAuth:
-    description: API Key para autenticação. Configure AUTH_ENABLED=true no .env para
-      habilitar.
+    description: 'API Key para autenticação. Configure AUTH_ENABLED=true e AUTH_TYPE=api_key
+      no .env. Exemplo: X-API-Key: sua-chave-api-aqui'
     in: header
     name: X-API-Key
     type: apiKey

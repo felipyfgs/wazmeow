@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 
 	_ "github.com/mattn/go-sqlite3" // Import SQLite driver for whatsmeow
 	"github.com/uptrace/bun"
@@ -150,9 +151,16 @@ func (c *Container) initializeWhatsApp() error {
 	switch dbDriver {
 	case "sqlite", "sqlite3":
 		dbDriver = "sqlite3"
-		// Add foreign keys parameter for SQLite
+		// Add foreign keys parameter for SQLite (only for file-based databases)
 		if dbURL == "./data/wazmeow.db" {
 			dbURL = "./data/wazmeow.db?_foreign_keys=on"
+		} else if !strings.Contains(dbURL, ":memory:") && !strings.Contains(dbURL, "mode=memory") && !strings.Contains(dbURL, "_foreign_keys") {
+			// Add foreign keys parameter if not already present and not in-memory
+			if strings.Contains(dbURL, "?") {
+				dbURL += "&_foreign_keys=on"
+			} else {
+				dbURL += "?_foreign_keys=on"
+			}
 		}
 	case "postgres", "postgresql":
 		dbDriver = "postgres"

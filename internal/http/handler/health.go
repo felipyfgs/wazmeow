@@ -28,12 +28,24 @@ func NewHealthHandler(container *container.Container, logger logger.Logger) *Hea
 
 // Health handles GET /health
 // @Summary Health Check da aplicação
-// @Description Verifica o status de saúde da aplicação e seus serviços dependentes
+// @Description Verifica o status de saúde da aplicação e todos os seus serviços dependentes (banco de dados, WhatsApp, etc.).
+// @Description
+// @Description **Informações retornadas:**
+// @Description - Status geral da aplicação (healthy/unhealthy)
+// @Description - Versão da aplicação
+// @Description - Tempo de atividade (uptime)
+// @Description - Status individual de cada serviço
+// @Description - Timestamp da verificação
+// @Description
+// @Description **Status possíveis:**
+// @Description - `healthy`: Todos os serviços funcionando normalmente
+// @Description - `unhealthy`: Um ou mais serviços com problemas
+// @Description - `degraded`: Serviços funcionando com limitações
 // @Tags Health
 // @Accept json
 // @Produce json
-// @Success 200 {object} dto.SuccessResponse{data=dto.HealthResponse} "Aplicação saudável"
-// @Failure 503 {object} dto.ErrorResponse "Serviços indisponíveis"
+// @Success 200 {object} dto.SuccessResponse{data=dto.HealthResponse} "Aplicação e serviços saudáveis"
+// @Failure 503 {object} dto.ErrorResponse "Um ou mais serviços indisponíveis"
 // @Router /health [get]
 func (h *HealthHandler) Health(w http.ResponseWriter, r *http.Request) {
 	services := make(map[string]interface{})
@@ -95,12 +107,33 @@ func (h *HealthHandler) Health(w http.ResponseWriter, r *http.Request) {
 
 // Metrics handles GET /metrics
 // @Summary Métricas da aplicação
-// @Description Retorna métricas detalhadas da aplicação incluindo sessões, WhatsApp e sistema
+// @Description Retorna métricas detalhadas e estatísticas de performance da aplicação, incluindo informações sobre sessões, WhatsApp e sistema.
+// @Description
+// @Description **Métricas incluídas:**
+// @Description
+// @Description **Sessões:**
+// @Description - Total de sessões criadas
+// @Description - Sessões conectadas/desconectadas
+// @Description - Sessões com erro
+// @Description - Sessões ativas
+// @Description
+// @Description **WhatsApp:**
+// @Description - Total de clientes WhatsApp
+// @Description - Clientes conectados e autenticados
+// @Description - Mensagens enviadas e recebidas
+// @Description - Clientes com erro
+// @Description
+// @Description **Sistema:**
+// @Description - Tempo de atividade (uptime)
+// @Description - Uso de memória
+// @Description - Uso de CPU
+// @Description - Status do banco de dados
+// @Description - Conexões ativas do banco
 // @Tags Health
 // @Accept json
 // @Produce json
-// @Success 200 {object} dto.SuccessResponse{data=dto.MetricsResponse} "Métricas da aplicação"
-// @Failure 500 {object} dto.ErrorResponse "Erro interno"
+// @Success 200 {object} dto.SuccessResponse{data=dto.MetricsResponse} "Métricas coletadas com sucesso"
+// @Failure 500 {object} dto.ErrorResponse "Erro interno ao coletar métricas"
 // @Router /metrics [get]
 func (h *HealthHandler) Metrics(w http.ResponseWriter, r *http.Request) {
 	// Get database stats
