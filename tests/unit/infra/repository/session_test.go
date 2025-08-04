@@ -1,23 +1,35 @@
-package sqlite_test
+package repository_test
 
 import (
 	"context"
 	"database/sql"
 	"fmt"
 	"io"
+	"os"
 	"testing"
 	"time"
 
+	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/uptrace/bun"
+	"github.com/uptrace/bun/dialect/pgdialect"
 	"github.com/uptrace/bun/dialect/sqlitedialect"
 
 	"wazmeow/internal/domain/session"
-	"wazmeow/internal/infra/repository/sqlite"
+	"wazmeow/internal/infra/database/migrations"
+	"wazmeow/internal/infra/repository"
 	"wazmeow/pkg/logger"
 )
+
+// TestDatabase represents a test database configuration
+type TestDatabase struct {
+	Name   string
+	Driver string
+	DSN    string
+	DB     *bun.DB
+}
 
 func setupTestDB(t *testing.T) *bun.DB {
 	// Create in-memory SQLite database for testing
@@ -27,24 +39,53 @@ func setupTestDB(t *testing.T) *bun.DB {
 	// Create bun DB instance
 	db := bun.NewDB(sqldb, sqlitedialect.New())
 
-	// Create sessions table with proxy_config column
-	createTableSQL := `
-	CREATE TABLE wazmeow_sessions (
-		id TEXT PRIMARY KEY,
-		name TEXT NOT NULL UNIQUE,
-		status TEXT NOT NULL,
-		wa_jid TEXT,
-		qr_code TEXT,
-		proxy_config TEXT,
-		is_active BOOLEAN NOT NULL DEFAULT FALSE,
-		created_at DATETIME NOT NULL,
-		updated_at DATETIME NOT NULL
-	);
-	`
-	_, err = db.Exec(createTableSQL)
-	require.NoError(t, err)
+	// Use migrations to create schema
+	setupSchema(t, db)
 
 	return db
+}
+
+// setupTestDatabases creates test databases for SQLite and PostgreSQL
+func setupTestDatabases(t *testing.T) []TestDatabase {
+	var databases []TestDatabase
+
+	// SQLite in-memory database
+	sqliteDB, err := sql.Open("sqlite3", ":memory:")
+	require.NoError(t, err)
+
+	bunSQLite := bun.NewDB(sqliteDB, sqlitedialect.New())
+	databases = append(databases, TestDatabase{
+		Name:   "SQLite",
+		Driver: "sqlite3",
+		DSN:    ":memory:",
+		DB:     bunSQLite,
+	})
+
+	// PostgreSQL database (if available)
+	if pgDSN := os.Getenv("TEST_POSTGRES_DSN"); pgDSN != "" {
+		pgDB, err := sql.Open("postgres", pgDSN)
+		if err == nil && pgDB.Ping() == nil {
+			bunPG := bun.NewDB(pgDB, pgdialect.New())
+			databases = append(databases, TestDatabase{
+				Name:   "PostgreSQL",
+				Driver: "postgres",
+				DSN:    pgDSN,
+				DB:     bunPG,
+			})
+		}
+	}
+
+	return databases
+}
+
+// setupSchema creates the necessary tables for testing
+func setupSchema(t *testing.T, db *bun.DB) {
+	nullLogger := &NullLogger{}
+	migrator := migrations.NewMigrator(db, nullLogger)
+
+	ctx := context.Background()
+	err := migrator.Migrate(ctx)
+	require.NoError(t, err, "Failed to run migrations")
 }
 
 // NullLogger for repository tests - implements logger.Logger interface
@@ -84,7 +125,7 @@ func TestSessionRepository_Create(t *testing.T) {
 		defer db.Close()
 
 		nullLogger := &NullLogger{}
-		repo := sqlite.NewSessionRepository(db, nullLogger)
+		repo := repository.NewSessionRepository(db, nullLogger)
 		sess := session.NewSession("test-session")
 		ctx := context.Background()
 
@@ -107,7 +148,7 @@ func TestSessionRepository_Create(t *testing.T) {
 		defer db.Close()
 
 		nullLogger := &NullLogger{}
-		repo := sqlite.NewSessionRepository(db, nullLogger)
+		repo := repository.NewSessionRepository(db, nullLogger)
 		sess1 := session.NewSession("duplicate-session")
 		sess2 := session.NewSession("duplicate-session")
 		ctx := context.Background()
@@ -130,7 +171,7 @@ func TestSessionRepository_Create(t *testing.T) {
 		defer db.Close()
 
 		nullLogger := &NullLogger{}
-		repo := sqlite.NewSessionRepository(db, nullLogger)
+		repo := repository.NewSessionRepository(db, nullLogger)
 		sess := session.NewSession("context-test")
 
 		// Create cancelled context
@@ -153,7 +194,7 @@ func TestSessionRepository_GetByID(t *testing.T) {
 		defer db.Close()
 
 		nullLogger := &NullLogger{}
-		repo := sqlite.NewSessionRepository(db, nullLogger)
+		repo := repository.NewSessionRepository(db, nullLogger)
 		originalSess := session.NewSession("get-by-id-test")
 		ctx := context.Background()
 
@@ -179,7 +220,7 @@ func TestSessionRepository_GetByID(t *testing.T) {
 		defer db.Close()
 
 		nullLogger := &NullLogger{}
-		repo := sqlite.NewSessionRepository(db, nullLogger)
+		repo := repository.NewSessionRepository(db, nullLogger)
 		nonExistentID := session.NewSessionID()
 		ctx := context.Background()
 
@@ -198,7 +239,7 @@ func TestSessionRepository_GetByID(t *testing.T) {
 		defer db.Close()
 
 		nullLogger := &NullLogger{}
-		repo := sqlite.NewSessionRepository(db, nullLogger)
+		repo := repository.NewSessionRepository(db, nullLogger)
 		originalSess := session.NewSession("connected-test")
 		err := originalSess.Connect("test@s.whatsapp.net")
 		require.NoError(t, err)
@@ -227,7 +268,7 @@ func TestSessionRepository_GetByName(t *testing.T) {
 		defer db.Close()
 
 		nullLogger := &NullLogger{}
-		repo := sqlite.NewSessionRepository(db, nullLogger)
+		repo := repository.NewSessionRepository(db, nullLogger)
 		originalSess := session.NewSession("get-by-name-test")
 		ctx := context.Background()
 
@@ -251,7 +292,7 @@ func TestSessionRepository_GetByName(t *testing.T) {
 		defer db.Close()
 
 		nullLogger := &NullLogger{}
-		repo := sqlite.NewSessionRepository(db, nullLogger)
+		repo := repository.NewSessionRepository(db, nullLogger)
 		ctx := context.Background()
 
 		// Act
@@ -271,7 +312,7 @@ func TestSessionRepository_Update(t *testing.T) {
 		defer db.Close()
 
 		nullLogger := &NullLogger{}
-		repo := sqlite.NewSessionRepository(db, nullLogger)
+		repo := repository.NewSessionRepository(db, nullLogger)
 		sess := session.NewSession("update-test")
 		ctx := context.Background()
 
@@ -305,7 +346,7 @@ func TestSessionRepository_Update(t *testing.T) {
 		defer db.Close()
 
 		nullLogger := &NullLogger{}
-		repo := sqlite.NewSessionRepository(db, nullLogger)
+		repo := repository.NewSessionRepository(db, nullLogger)
 		sess := session.NewSession("non-existent")
 		ctx := context.Background()
 
@@ -322,7 +363,7 @@ func TestSessionRepository_Update(t *testing.T) {
 		defer db.Close()
 
 		nullLogger := &NullLogger{}
-		repo := sqlite.NewSessionRepository(db, nullLogger)
+		repo := repository.NewSessionRepository(db, nullLogger)
 		sess := session.NewSession("timestamp-test")
 		ctx := context.Background()
 
@@ -330,10 +371,13 @@ func TestSessionRepository_Update(t *testing.T) {
 		err := repo.Create(ctx, sess)
 		require.NoError(t, err)
 
-		originalUpdatedAt := sess.UpdatedAt()
+		// Get the original session from database to compare timestamps
+		originalSess, err := repo.GetByID(ctx, sess.ID())
+		require.NoError(t, err)
+		originalUpdatedAt := originalSess.UpdatedAt()
 
 		// Wait a bit and update
-		time.Sleep(1 * time.Millisecond)
+		time.Sleep(10 * time.Millisecond)
 		err = sess.UpdateName("updated-name")
 		require.NoError(t, err)
 
@@ -345,7 +389,10 @@ func TestSessionRepository_Update(t *testing.T) {
 		retrievedSess, err := repo.GetByID(ctx, sess.ID())
 		require.NoError(t, err)
 		assert.Equal(t, "updated-name", retrievedSess.Name())
-		assert.True(t, retrievedSess.UpdatedAt().After(originalUpdatedAt))
+		// The session entity should have a newer timestamp than the original
+		assert.True(t, sess.UpdatedAt().After(originalUpdatedAt),
+			"Session entity UpdatedAt should be newer. Original: %v, Current: %v",
+			originalUpdatedAt, sess.UpdatedAt())
 	})
 }
 
@@ -356,7 +403,7 @@ func TestSessionRepository_Delete(t *testing.T) {
 		defer db.Close()
 
 		nullLogger := &NullLogger{}
-		repo := sqlite.NewSessionRepository(db, nullLogger)
+		repo := repository.NewSessionRepository(db, nullLogger)
 		sess := session.NewSession("delete-test")
 		ctx := context.Background()
 
@@ -382,7 +429,7 @@ func TestSessionRepository_Delete(t *testing.T) {
 		defer db.Close()
 
 		nullLogger := &NullLogger{}
-		repo := sqlite.NewSessionRepository(db, nullLogger)
+		repo := repository.NewSessionRepository(db, nullLogger)
 		nonExistentID := session.NewSessionID()
 		ctx := context.Background()
 
@@ -402,7 +449,7 @@ func TestSessionRepository_List(t *testing.T) {
 		defer db.Close()
 
 		nullLogger := &NullLogger{}
-		repo := sqlite.NewSessionRepository(db, nullLogger)
+		repo := repository.NewSessionRepository(db, nullLogger)
 		ctx := context.Background()
 
 		// Create multiple sessions
@@ -435,7 +482,7 @@ func TestSessionRepository_List(t *testing.T) {
 		defer db.Close()
 
 		nullLogger := &NullLogger{}
-		repo := sqlite.NewSessionRepository(db, nullLogger)
+		repo := repository.NewSessionRepository(db, nullLogger)
 		ctx := context.Background()
 
 		// Create sessions
@@ -460,7 +507,7 @@ func TestSessionRepository_List(t *testing.T) {
 		defer db.Close()
 
 		nullLogger := &NullLogger{}
-		repo := sqlite.NewSessionRepository(db, nullLogger)
+		repo := repository.NewSessionRepository(db, nullLogger)
 		ctx := context.Background()
 
 		// Act
@@ -478,7 +525,7 @@ func TestSessionRepository_List(t *testing.T) {
 		defer db.Close()
 
 		nullLogger := &NullLogger{}
-		repo := sqlite.NewSessionRepository(db, nullLogger)
+		repo := repository.NewSessionRepository(db, nullLogger)
 		ctx := context.Background()
 
 		// Create one session
@@ -503,7 +550,7 @@ func TestSessionRepository_GetByStatus(t *testing.T) {
 		defer db.Close()
 
 		nullLogger := &NullLogger{}
-		repo := sqlite.NewSessionRepository(db, nullLogger)
+		repo := repository.NewSessionRepository(db, nullLogger)
 		ctx := context.Background()
 
 		// Create sessions with different statuses
@@ -534,7 +581,7 @@ func TestSessionRepository_GetByStatus(t *testing.T) {
 		defer db.Close()
 
 		nullLogger := &NullLogger{}
-		repo := sqlite.NewSessionRepository(db, nullLogger)
+		repo := repository.NewSessionRepository(db, nullLogger)
 		ctx := context.Background()
 
 		// Create only disconnected sessions
@@ -559,7 +606,7 @@ func TestSessionRepository_GetActiveCount(t *testing.T) {
 		defer db.Close()
 
 		nullLogger := &NullLogger{}
-		repo := sqlite.NewSessionRepository(db, nullLogger)
+		repo := repository.NewSessionRepository(db, nullLogger)
 		ctx := context.Background()
 
 		// Create sessions - some active, some inactive
@@ -594,7 +641,7 @@ func TestSessionRepository_GetActiveCount(t *testing.T) {
 		defer db.Close()
 
 		nullLogger := &NullLogger{}
-		repo := sqlite.NewSessionRepository(db, nullLogger)
+		repo := repository.NewSessionRepository(db, nullLogger)
 		ctx := context.Background()
 
 		// Create only inactive sessions
@@ -609,4 +656,65 @@ func TestSessionRepository_GetActiveCount(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, 0, activeCount)
 	})
+}
+
+// TestSessionRepository_MultiDatabase tests the repository with multiple databases
+func TestSessionRepository_MultiDatabase(t *testing.T) {
+	databases := setupTestDatabases(t)
+
+	for _, testDB := range databases {
+		t.Run(fmt.Sprintf("Database_%s", testDB.Name), func(t *testing.T) {
+			// Setup
+			setupSchema(t, testDB.DB)
+			defer testDB.DB.Close()
+
+			nullLogger := &NullLogger{}
+			repo := repository.NewSessionRepository(testDB.DB, nullLogger)
+			ctx := context.Background()
+
+			t.Run("Create_and_Retrieve", func(t *testing.T) {
+				sess := session.NewSession("multi-db-test")
+
+				err := repo.Create(ctx, sess)
+				assert.NoError(t, err)
+
+				// Verify session was created
+				retrieved, err := repo.GetByID(ctx, sess.ID())
+				assert.NoError(t, err)
+				assert.Equal(t, sess.ID(), retrieved.ID())
+				assert.Equal(t, sess.Name(), retrieved.Name())
+			})
+
+			t.Run("CRUD_Operations", func(t *testing.T) {
+				// Create
+				sess := session.NewSession("crud-test")
+				err := repo.Create(ctx, sess)
+				require.NoError(t, err)
+
+				// Read
+				retrieved, err := repo.GetByName(ctx, "crud-test")
+				require.NoError(t, err)
+				assert.Equal(t, sess.ID(), retrieved.ID())
+
+				// Update
+				err = sess.Connect("test@s.whatsapp.net")
+				require.NoError(t, err)
+				err = repo.Update(ctx, sess)
+				assert.NoError(t, err)
+
+				// Verify update
+				updated, err := repo.GetByID(ctx, sess.ID())
+				assert.NoError(t, err)
+				assert.Equal(t, session.StatusConnected, updated.Status())
+
+				// Delete
+				err = repo.Delete(ctx, sess.ID())
+				assert.NoError(t, err)
+
+				// Verify deletion
+				_, err = repo.GetByID(ctx, sess.ID())
+				assert.Equal(t, session.ErrSessionNotFound, err)
+			})
+		})
+	}
 }

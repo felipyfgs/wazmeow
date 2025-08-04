@@ -16,7 +16,7 @@ import (
 	"wazmeow/internal/infra/database"
 	"wazmeow/internal/infra/database/migrations"
 	infraLogger "wazmeow/internal/infra/logger"
-	"wazmeow/internal/infra/repository/sqlite"
+	"wazmeow/internal/infra/repository"
 	"wazmeow/internal/infra/whats"
 	"wazmeow/pkg/logger"
 	"wazmeow/pkg/validator"
@@ -135,7 +135,7 @@ func (c *Container) initializeDatabase() error {
 // initializeRepositories sets up all repositories
 func (c *Container) initializeRepositories() error {
 	// Session repository
-	c.SessionRepo = sqlite.NewSessionRepository(c.DB, c.Logger)
+	c.SessionRepo = repository.NewSessionRepository(c.DB, c.Logger)
 
 	c.Logger.Info("repositories initialized")
 	return nil

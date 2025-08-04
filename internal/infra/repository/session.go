@@ -1,4 +1,4 @@
-package sqlite
+package repository
 
 import (
 	"context"
@@ -12,13 +12,13 @@ import (
 	"wazmeow/pkg/logger"
 )
 
-// SessionRepository implements session.Repository using SQLite
+// SessionRepository implements session.Repository using Bun ORM (supports SQLite, PostgreSQL, etc.)
 type SessionRepository struct {
 	db     *bun.DB
 	logger logger.Logger
 }
 
-// NewSessionRepository creates a new SQLite session repository
+// NewSessionRepository creates a new session repository using Bun ORM
 func NewSessionRepository(db *bun.DB, logger logger.Logger) session.Repository {
 	return &SessionRepository{
 		db:     db,

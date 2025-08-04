@@ -8,7 +8,7 @@ import (
 	"wazmeow/internal/http/server"
 	"wazmeow/internal/infra/config"
 	"wazmeow/internal/infra/container"
-	sessionUC "wazmeow/internal/usecases/session"
+	"wazmeow/internal/usecases/session"
 	"wazmeow/pkg/logger"
 )
 
@@ -199,14 +199,14 @@ func (c *AppContainer) GetWhatsAppStats() any {
 }
 
 // AutoReconnectSessions performs automatic reconnection of eligible sessions
-func (c *AppContainer) AutoReconnectSessions(ctx context.Context) (*sessionUC.AutoReconnectResponse, error) {
+func (c *AppContainer) AutoReconnectSessions(ctx context.Context) (*session.AutoReconnectResponse, error) {
 	if !c.isInitialized {
 		return nil, fmt.Errorf("container not initialized")
 	}
 
 	sessionUseCases := c.useCaseContainer.GetSessionUseCases()
 
-	req := sessionUC.AutoReconnectRequest{
+	req := session.AutoReconnectRequest{
 		MaxConcurrentReconnections: 5, // Limit concurrent reconnections
 		ReconnectionTimeout:        30 * time.Second,
 	}
