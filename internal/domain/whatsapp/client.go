@@ -98,10 +98,10 @@ func (s ConnectionStatus) String() string {
 
 // DeviceInfo represents device information
 type DeviceInfo struct {
-	Platform    string
-	AppVersion  string
-	DeviceModel string
-	OSVersion   string
+	Platform     string
+	AppVersion   string
+	DeviceModel  string
+	OSVersion    string
 	Manufacturer string
 }
 
