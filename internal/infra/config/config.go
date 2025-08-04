@@ -196,7 +196,7 @@ func Load() (*Config, error) {
 				AppName:    getEnvString("POSTGRES_APP_NAME", "wazmeow"),
 			},
 			SQLite: SQLiteConfig{
-				Path:        getEnvString("SQLITE_PATH", "./data/wazmeow.db"),
+				Path:        getEnvStringAllowEmpty("SQLITE_PATH", "./data/wazmeow.db"),
 				ForeignKeys: getEnvBool("SQLITE_FOREIGN_KEYS", true),
 				JournalMode: getEnvString("SQLITE_JOURNAL_MODE", "WAL"),
 				Synchronous: getEnvString("SQLITE_SYNCHRONOUS", "NORMAL"),
@@ -419,6 +419,14 @@ type ConfigureResponse struct {
 
 func getEnvString(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
+
+// getEnvStringAllowEmpty allows empty string values from environment variables
+func getEnvStringAllowEmpty(key, defaultValue string) string {
+	if value, exists := os.LookupEnv(key); exists {
 		return value
 	}
 	return defaultValue

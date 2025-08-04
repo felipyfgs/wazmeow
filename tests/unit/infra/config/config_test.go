@@ -11,8 +11,14 @@ import (
 
 func TestConfig_Load(t *testing.T) {
 	t.Run("should load config with default values", func(t *testing.T) {
-		// Arrange - Clear environment variables
+		// Arrange - Clear environment variables and set test database
 		os.Clearenv()
+		os.Setenv("DB_URL", ":memory:")
+		os.Setenv("SQLITE_PATH", "")
+		defer func() {
+			os.Unsetenv("DB_URL")
+			os.Unsetenv("SQLITE_PATH")
+		}()
 
 		// Act
 		cfg, err := config.Load()
@@ -26,7 +32,7 @@ func TestConfig_Load(t *testing.T) {
 		assert.Equal(t, "localhost", cfg.Server.Host)
 		assert.Equal(t, "info", cfg.Log.Level)
 		assert.Equal(t, "console", cfg.Log.Output)
-		assert.Equal(t, "./data/wazmeow.db", cfg.Database.SQLite.Path)
+		assert.Equal(t, ":memory:", cfg.Database.URL)
 	})
 
 	t.Run("should load config from environment variables", func(t *testing.T) {
@@ -61,6 +67,8 @@ func TestConfig_Load(t *testing.T) {
 		os.Clearenv()
 		os.Setenv("SERVER_PORT", "8080")
 		os.Setenv("SERVER_HOST", "localhost")
+		os.Setenv("DB_URL", ":memory:")
+		os.Setenv("SQLITE_PATH", "")
 
 		// Act
 		cfg, err := config.Load()
@@ -81,6 +89,8 @@ func TestConfig_Load(t *testing.T) {
 		// Arrange
 		os.Clearenv()
 		os.Setenv("SERVER_PORT", "70000") // Port > 65535
+		os.Setenv("DB_URL", ":memory:")
+		os.Setenv("SQLITE_PATH", "")
 
 		// Act
 		cfg, err := config.Load()
@@ -104,6 +114,8 @@ func TestConfig_Load(t *testing.T) {
 		os.Clearenv()
 		os.Setenv("LOGGER_LEVEL", "info")
 		os.Setenv("LOGGER_FORMAT", "console")
+		os.Setenv("DB_URL", ":memory:")
+		os.Setenv("SQLITE_PATH", "")
 
 		// Act
 		cfg, err := config.Load()
@@ -124,6 +136,8 @@ func TestConfig_Load(t *testing.T) {
 		// Arrange
 		os.Clearenv()
 		os.Setenv("LOG_LEVEL", "invalid_level")
+		os.Setenv("DB_URL", ":memory:")
+		os.Setenv("SQLITE_PATH", "")
 
 		// Act
 		cfg, err := config.Load()
@@ -145,7 +159,8 @@ func TestConfig_Load(t *testing.T) {
 	t.Run("should validate database configuration", func(t *testing.T) {
 		// Arrange
 		os.Clearenv()
-		os.Setenv("DATABASE_PATH", "./test.db")
+		os.Setenv("DB_URL", ":memory:")
+		os.Setenv("SQLITE_PATH", "")
 
 		// Act
 		cfg, err := config.Load()

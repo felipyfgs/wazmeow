@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/dialect/sqlitedialect"
@@ -88,11 +89,13 @@ func (c *SQLiteConnection) connect() error {
 		dbPath = c.Config.SQLite.Path
 	}
 
-	// Ensure the directory exists
-	dir := filepath.Dir(dbPath)
-	if dir != "." && dir != "" {
-		if err := os.MkdirAll(dir, 0755); err != nil {
-			return fmt.Errorf("failed to create database directory: %w", err)
+	// Ensure the directory exists (only for file-based databases, not in-memory)
+	if !strings.Contains(dbPath, ":memory:") && !strings.Contains(dbPath, "mode=memory") {
+		dir := filepath.Dir(dbPath)
+		if dir != "." && dir != "" {
+			if err := os.MkdirAll(dir, 0755); err != nil {
+				return fmt.Errorf("failed to create database directory: %w", err)
+			}
 		}
 	}
 
